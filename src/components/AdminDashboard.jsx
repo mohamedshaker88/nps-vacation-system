@@ -1,0 +1,787 @@
+import React, { useState, useEffect } from 'react';
+import { Calendar, Users, Clock, CheckCircle, XCircle, AlertCircle, Plus, Edit, Trash2, User, Mail, Phone, MapPin, FileText, Download, LogOut, Eye, EyeOff } from 'lucide-react';
+import { dataService } from '../services/dataService';
+
+const AdminDashboard = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [loginForm, setLoginForm] = useState({ username: '', password: '' });
+  const [loginError, setLoginError] = useState('');
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [loading, setLoading] = useState(false);
+
+  // Load employees and requests from Supabase
+  const [employees, setEmployees] = useState([]);
+  const [requests, setRequests] = useState([]);
+
+  const [newRequest, setNewRequest] = useState({
+    employeeId: '',
+    type: '',
+    startDate: '',
+    endDate: '',
+    reason: '',
+    coverageBy: '',
+    medicalCertificate: false,
+    emergencyContact: '',
+    additionalNotes: ''
+  });
+
+  const [showRequestForm, setShowRequestForm] = useState(false);
+
+  // Load data from Supabase
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        const [employeesData, requestsData] = await Promise.all([
+          dataService.getEmployees(),
+          dataService.getRequests()
+        ]);
+        setEmployees(employeesData);
+        setRequests(requestsData);
+      } catch (error) {
+        console.error('Error loading data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (isAuthenticated) {
+      loadData();
+    }
+  }, [isAuthenticated]);
+
+  // Check if admin is already logged in
+  useEffect(() => {
+    const adminAuth = localStorage.getItem('adminAuth');
+    if (adminAuth === 'true') {
+      setIsAuthenticated(true);
+    }
+  }, []);
+
+  const handleLogin = () => {
+    if (loginForm.username === 'admin' && loginForm.password === 'NPSTEAM!') {
+      setIsAuthenticated(true);
+      localStorage.setItem('adminAuth', 'true');
+      setLoginError('');
+    } else {
+      setLoginError('Invalid username or password');
+    }
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    localStorage.removeItem('adminAuth');
+    setLoginForm({ username: '', password: '' });
+  };
+
+  const leaveTypes = [
+    { value: 'Annual Leave', label: 'Annual Leave', requiresCoverage: true, maxDays: 14, paid: true },
+    { value: 'Sick Leave', label: 'Sick Leave', requiresCoverage: true, maxDays: 1, paid: true },
+    { value: 'Emergency Leave', label: 'Emergency Leave', requiresCoverage: true, maxDays: 3, paid: false },
+    { value: 'Personal Leave', label: 'Personal Day', requiresCoverage: true, maxDays: 1, paid: false },
+    { value: 'Maternity Leave', label: 'Maternity Leave', requiresCoverage: true, maxDays: 70, paid: false },
+    { value: 'Paternity Leave', label: 'Paternity Leave', requiresCoverage: true, maxDays: 7, paid: false },
+    { value: 'Bereavement Leave', label: 'Bereavement Leave', requiresCoverage: true, maxDays: 5, paid: false },
+    { value: 'Religious Leave', label: 'Religious Leave', requiresCoverage: true, maxDays: 2, paid: false },
+    { value: 'Compensatory Time', label: 'Comp Time', requiresCoverage: true, maxDays: 3, paid: false },
+    { value: 'Unpaid Leave', label: 'Unpaid Leave', requiresCoverage: true, maxDays: 30, paid: false }
+  ];
+
+  const calculateDays = (start, end) => {
+    if (!start || !end) return 0;
+    const startDate = new Date(start);
+    const endDate = new Date(end);
+    const diffTime = Math.abs(endDate - startDate);
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+  };
+
+  const handleSubmitRequest = async () => {
+    if (!newRequest.employeeId || !newRequest.type || !newRequest.startDate || !newRequest.endDate) {
+      alert('Please fill in all required fields');
+      return;
+    }
+
+    const employee = employees.find(emp => emp.id === parseInt(newRequest.employeeId));
+    const days = calculateDays(newRequest.startDate, newRequest.endDate);
+    
+    const request = {
+      employee_name: employee.name,
+      employee_email: employee.email,
+      type: newRequest.type,
+      start_date: newRequest.startDate,
+      end_date: newRequest.endDate,
+      days: days,
+      reason: newRequest.reason,
+      status: 'Pending',
+      submit_date: new Date().toISOString().split('T')[0],
+      coverage_arranged: !!newRequest.coverageBy,
+      coverage_by: newRequest.coverageBy,
+      medical_certificate: newRequest.medicalCertificate,
+      emergency_contact: newRequest.emergencyContact,
+      additional_notes: newRequest.additionalNotes
+    };
+
+    try {
+      const newRequestData = await dataService.saveRequest(request);
+      setRequests([newRequestData, ...requests]);
+      setNewRequest({
+        employeeId: '',
+        type: '',
+        startDate: '',
+        endDate: '',
+        reason: '',
+        coverageBy: '',
+        medicalCertificate: false,
+        emergencyContact: '',
+        additionalNotes: ''
+      });
+      setShowRequestForm(false);
+    } catch (error) {
+      console.error('Error saving request:', error);
+      alert('Error saving request. Please try again.');
+    }
+  };
+
+  const updateRequestStatus = async (id, status) => {
+    try {
+      await dataService.updateRequestStatus(id, status);
+      setRequests(requests.map(req => 
+        req.id === id ? { ...req, status } : req
+      ));
+    } catch (error) {
+      console.error('Error updating request:', error);
+      alert('Error updating request status. Please try again.');
+    }
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'Approved': return 'text-green-600 bg-green-100';
+      case 'Rejected': return 'text-red-600 bg-red-100';
+      case 'Pending': return 'text-yellow-600 bg-yellow-100';
+      default: return 'text-gray-600 bg-gray-100';
+    }
+  };
+
+  const getDashboardStats = () => {
+    const pending = requests.filter(r => r.status === 'Pending').length;
+    const approved = requests.filter(r => r.status === 'Approved').length;
+    const totalRequests = requests.length;
+    const coverageNeeded = requests.filter(r => r.status === 'Approved' && !r.coverage_arranged).length;
+    
+    return { pending, approved, totalRequests, coverageNeeded };
+  };
+
+  const stats = getDashboardStats();
+
+  // Login form
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="max-w-md w-full bg-white rounded-lg shadow-md p-6">
+          <div className="text-center mb-6">
+            <h1 className="text-2xl font-bold text-gray-900">Admin Login</h1>
+            <p className="text-gray-600">NPS Team Vacation System</p>
+          </div>
+          
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+              <input
+                type="text"
+                value={loginForm.username}
+                onChange={(e) => setLoginForm({...loginForm, username: e.target.value})}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Enter username"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={loginForm.password}
+                  onChange={(e) => setLoginForm({...loginForm, password: e.target.value})}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4 text-gray-400" /> : <Eye className="h-4 w-4 text-gray-400" />}
+                </button>
+              </div>
+            </div>
+            
+            {loginError && (
+              <div className="text-red-600 text-sm">{loginError}</div>
+            )}
+            
+            <button
+              onClick={handleLogin}
+              className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition duration-200"
+            >
+              Login
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const renderDashboard = () => (
+    <div className="space-y-6">
+      {loading && (
+        <div className="text-center py-4">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <p className="mt-2 text-gray-600">Loading data...</p>
+        </div>
+      )}
+      
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-blue-600 text-sm font-medium">Pending Requests</p>
+              <p className="text-2xl font-bold text-blue-800">{stats.pending}</p>
+            </div>
+            <AlertCircle className="h-8 w-8 text-blue-600" />
+          </div>
+        </div>
+        
+        <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-green-600 text-sm font-medium">Approved</p>
+              <p className="text-2xl font-bold text-green-800">{stats.approved}</p>
+            </div>
+            <CheckCircle className="h-8 w-8 text-green-600" />
+          </div>
+        </div>
+        
+        <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-purple-600 text-sm font-medium">Total Requests</p>
+              <p className="text-2xl font-bold text-purple-800">{stats.totalRequests}</p>
+            </div>
+            <FileText className="h-8 w-8 text-purple-600" />
+          </div>
+        </div>
+        
+        <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-orange-600 text-sm font-medium">Registered Employees</p>
+              <p className="text-2xl font-bold text-orange-800">{employees.length}</p>
+            </div>
+            <Users className="h-8 w-8 text-orange-600" />
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-lg shadow-sm border">
+        <div className="p-4 border-b">
+          <h3 className="text-lg font-semibold">Recent Requests</h3>
+        </div>
+        <div className="p-4">
+          {requests.length === 0 ? (
+            <p className="text-gray-500 text-center py-4">No requests submitted yet</p>
+          ) : (
+            requests.slice(0, 5).map(request => (
+              <div key={request.id} className="flex items-center justify-between py-3 border-b last:border-b-0">
+                <div>
+                  <div className="font-medium">{request.employee_name}</div>
+                  <div className="text-sm text-gray-600">{request.type} • {request.start_date} to {request.end_date}</div>
+                </div>
+                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(request.status)}`}>
+                  {request.status}
+                </span>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderRequestForm = () => (
+    <div className="bg-white rounded-lg shadow-sm border">
+      <div className="p-4 border-b flex items-center justify-between">
+        <h3 className="text-lg font-semibold">New Leave Request</h3>
+        <button
+          onClick={() => setShowRequestForm(false)}
+          className="text-gray-500 hover:text-gray-700"
+        >
+          <XCircle className="h-5 w-5" />
+        </button>
+      </div>
+      
+      <div className="p-6 space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Employee *</label>
+            <select
+              value={newRequest.employeeId}
+              onChange={(e) => setNewRequest({...newRequest, employeeId: e.target.value})}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Select Employee</option>
+              {employees.map(emp => (
+                <option key={emp.id} value={emp.id}>{emp.name} ({emp.email})</option>
+              ))}
+            </select>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Leave Type *</label>
+            <select
+              value={newRequest.type}
+              onChange={(e) => setNewRequest({...newRequest, type: e.target.value})}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Select Leave Type</option>
+              {leaveTypes.map(type => (
+                <option key={type.value} value={type.value}>{type.label}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Start Date *</label>
+            <input
+              type="date"
+              value={newRequest.startDate}
+              onChange={(e) => setNewRequest({...newRequest, startDate: e.target.value})}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">End Date *</label>
+            <input
+              type="date"
+              value={newRequest.endDate}
+              onChange={(e) => setNewRequest({...newRequest, endDate: e.target.value})}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+        </div>
+
+        {newRequest.startDate && newRequest.endDate && (
+          <div className="bg-blue-50 p-3 rounded-md">
+            <p className="text-sm text-blue-800">
+              Total days requested: {calculateDays(newRequest.startDate, newRequest.endDate)}
+            </p>
+          </div>
+        )}
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Reason for Leave *</label>
+          <textarea
+            value={newRequest.reason}
+            onChange={(e) => setNewRequest({...newRequest, reason: e.target.value})}
+            rows={3}
+            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Please provide a brief reason for your leave request"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Coverage Arranged With</label>
+          <select
+            value={newRequest.coverageBy}
+            onChange={(e) => setNewRequest({...newRequest, coverageBy: e.target.value})}
+            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">Select Coverage Person</option>
+            {employees.filter(emp => emp.id !== parseInt(newRequest.employeeId)).map(emp => (
+              <option key={emp.id} value={emp.name}>{emp.name}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex justify-end space-x-3 pt-4">
+          <button
+            onClick={() => setShowRequestForm(false)}
+            className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSubmitRequest}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          >
+            Submit Request
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderRequests = () => (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h2 className="text-xl font-semibold">Leave Requests</h2>
+        <button
+          onClick={() => setShowRequestForm(true)}
+          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center gap-2"
+        >
+          <Plus className="h-4 w-4" />
+          New Request
+        </button>
+      </div>
+
+      {showRequestForm && renderRequestForm()}
+
+      <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dates</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Days</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Coverage</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {requests.length === 0 ? (
+                <tr>
+                  <td colSpan="7" className="px-6 py-4 text-center text-gray-500">
+                    No requests submitted yet
+                  </td>
+                </tr>
+              ) : (
+                requests.map((request) => (
+                  <tr key={request.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">{request.employee_name}</div>
+                        <div className="text-sm text-gray-500">{request.employee_email}</div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{request.type}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {request.start_date} to {request.end_date}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{request.days}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(request.status)}`}>
+                        {request.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {request.coverage_by || 'Not arranged'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                      {request.status === 'Pending' && (
+                        <>
+                          <button
+                            onClick={() => updateRequestStatus(request.id, 'Approved')}
+                            className="text-green-600 hover:text-green-900"
+                          >
+                            Approve
+                          </button>
+                          <button
+                            onClick={() => updateRequestStatus(request.id, 'Rejected')}
+                            className="text-red-600 hover:text-red-900"
+                          >
+                            Reject
+                          </button>
+                        </>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderEmployees = () => (
+    <div className="space-y-4">
+      <h2 className="text-xl font-semibold">Registered Employees</h2>
+      
+      <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Annual Leave</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sick Leave</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joined</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {employees.length === 0 ? (
+                <tr>
+                  <td colSpan="6" className="px-6 py-4 text-center text-gray-500">
+                    No employees registered yet
+                  </td>
+                </tr>
+              ) : (
+                employees.map((employee) => {
+                  const usedAnnual = requests.filter(r => 
+                    r.employee_email === employee.email && 
+                    r.type === 'Annual Leave' && 
+                    r.status === 'Approved'
+                  ).reduce((sum, r) => sum + r.days, 0);
+                  
+                  const usedSick = requests.filter(r => 
+                    r.employee_email === employee.email && 
+                    r.type === 'Sick Leave' && 
+                    r.status === 'Approved'
+                  ).reduce((sum, r) => sum + r.days, 0);
+
+                  return (
+                    <tr key={employee.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <User className="h-5 w-5 text-gray-400 mr-2" />
+                          <div className="text-sm font-medium text-gray-900">{employee.name}</div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{employee.email}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{employee.phone}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">
+                          {15 - usedAnnual} / 15 remaining
+                        </div>
+                        <div className="w-24 bg-gray-200 rounded-full h-2">
+                          <div 
+                            className="bg-blue-600 h-2 rounded-full" 
+                            style={{width: `${(usedAnnual / 15) * 100}%`}}
+                          ></div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">
+                          {10 - usedSick} / 10 remaining
+                        </div>
+                        <div className="w-24 bg-gray-200 rounded-full h-2">
+                          <div 
+                            className="bg-green-600 h-2 rounded-full" 
+                            style={{width: `${(usedSick / 10) * 100}%`}}
+                          ></div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {new Date(employee.created_at).toLocaleDateString()}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderPolicies = () => (
+    <div className="space-y-6">
+      <h2 className="text-xl font-semibold">Leave Policies & Guidelines</h2>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-white rounded-lg shadow-sm border p-6">
+          <h3 className="text-lg font-semibold mb-4 text-blue-800">Company Leave Policy</h3>
+          <div className="space-y-3 text-sm">
+            <div className="flex justify-between">
+              <span>Annual Leave:</span>
+              <span className="font-medium">15 days per year</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Sick Leave:</span>
+              <span className="font-medium">10 days per year (1 day max per request)</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Maternity Leave:</span>
+              <span className="font-medium">70 days (Unpaid)</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Religious Holidays:</span>
+              <span className="font-medium">As per calendar</span>
+            </div>
+            <div className="mt-4 p-3 bg-blue-50 rounded">
+              <p className="text-xs text-blue-800">
+                Annual leave must be taken within the year or carried forward with approval. 
+                Sick leave requires medical certificate for documentation.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm border p-6">
+          <h3 className="text-lg font-semibold mb-4 text-green-800">Additional Benefits</h3>
+          <div className="space-y-3 text-sm">
+            <div className="flex justify-between">
+              <span>Emergency Leave:</span>
+              <span className="font-medium">3 days per incident (Unpaid)</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Bereavement Leave:</span>
+              <span className="font-medium">5 days per incident (Unpaid)</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Paternity Leave:</span>
+              <span className="font-medium">7 days (Unpaid)</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Personal Days:</span>
+              <span className="font-medium">As needed (Unpaid)</span>
+            </div>
+            <div className="mt-4 p-3 bg-green-50 rounded">
+              <p className="text-xs text-green-800">
+                Only Annual Leave and Sick Leave are paid. All other leave types are unpaid but available as needed. 
+                Coverage must be arranged for all leave requests.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-lg shadow-sm border p-6">
+        <h3 className="text-lg font-semibold mb-4">Leave Request Guidelines</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <h4 className="font-medium mb-3 text-gray-800">Request Procedures</h4>
+            <ul className="space-y-2 text-sm text-gray-600">
+              <li>• Submit requests at least 2 weeks in advance for planned leave</li>
+              <li>• Emergency leave can be requested with 24-hour notice</li>
+              <li>• All requests must include coverage arrangements</li>
+              <li>• Medical certificates required for sick leave documentation</li>
+              <li>• Maximum 3 people can be on leave simultaneously</li>
+              <li>• Peak periods (holidays) require 4 weeks advance notice</li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="font-medium mb-3 text-gray-800">Coverage Requirements</h4>
+            <ul className="space-y-2 text-sm text-gray-600">
+              <li>• 24/7 coverage must be maintained (5pm-1am daily)</li>
+              <li>• Minimum 8 staff members must be available</li>
+              <li>• Cross-training required for all team members</li>
+              <li>• Emergency contact list maintained</li>
+              <li>• Backup coverage person must confirm availability</li>
+              <li>• Weekend coverage requires special arrangement</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-lg shadow-sm border p-6">
+        <h3 className="text-lg font-semibold mb-4">Leave Types & Entitlements</h3>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Leave Type</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Max Duration</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Notice Required</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Documentation</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Pay Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {leaveTypes.map((type, index) => (
+                <tr key={index} className="hover:bg-gray-50">
+                  <td className="px-4 py-2 text-sm font-medium">{type.label}</td>
+                  <td className="px-4 py-2 text-sm">{type.maxDays} days</td>
+                  <td className="px-4 py-2 text-sm">
+                    {type.value === 'Emergency Leave' ? '24 hours' : 
+                     type.value === 'Sick Leave' ? 'ASAP' : '2 weeks'}
+                  </td>
+                  <td className="px-4 py-2 text-sm">
+                    {type.value.includes('Sick') || type.value.includes('Medical') ? 'Medical cert' :
+                     type.value === 'Bereavement Leave' ? 'Death certificate' :
+                     type.value === 'Maternity Leave' ? 'Medical report' : 'None'}
+                  </td>
+                  <td className="px-4 py-2 text-sm">
+                    {type.paid ? 'Paid' : 'Unpaid'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <div className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-4">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">NPS Team - Admin Dashboard</h1>
+              <p className="text-sm text-gray-600">Vacation Management System • 24/7 Coverage</p>
+            </div>
+            <div className="flex items-center space-x-4">
+              <div className="text-sm text-gray-600">
+                <Clock className="inline h-4 w-4 mr-1" />
+                5:00 PM - 1:00 AM Daily
+              </div>
+              <button
+                onClick={handleLogout}
+                className="flex items-center px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md"
+              >
+                <LogOut className="h-4 w-4 mr-1" />
+                Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="flex space-x-1 mb-6">
+          {[
+            { id: 'dashboard', label: 'Dashboard', icon: Calendar },
+            { id: 'requests', label: 'Requests', icon: FileText },
+            { id: 'employees', label: 'Employees', icon: Users },
+            { id: 'policies', label: 'Policies', icon: FileText }
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium ${
+                activeTab === tab.id
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+              }`}
+            >
+              <tab.icon className="h-4 w-4 mr-2" />
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        <div>
+          {activeTab === 'dashboard' && renderDashboard()}
+          {activeTab === 'requests' && renderRequests()}
+          {activeTab === 'employees' && renderEmployees()}
+          {activeTab === 'policies' && renderPolicies()}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default AdminDashboard; 
