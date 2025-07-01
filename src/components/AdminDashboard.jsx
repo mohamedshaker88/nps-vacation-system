@@ -46,18 +46,14 @@ const AdminDashboard = () => {
     const loadData = async () => {
       try {
         setLoading(true);
-        console.log('Loading data from Supabase...');
         const [employeesData, requestsData] = await Promise.all([
           dataService.getEmployees(),
           dataService.getRequests()
         ]);
-        console.log('Employees loaded:', employeesData);
-        console.log('Requests loaded:', requestsData);
         setEmployees(employeesData);
         setRequests(requestsData);
       } catch (error) {
         console.error('Error loading data:', error);
-        alert(`Error loading data: ${error.message}`);
       } finally {
         setLoading(false);
       }
@@ -94,16 +90,13 @@ const AdminDashboard = () => {
 
   // Employee management handlers
   const handleCreateEmployee = async () => {
-    console.log('Creating employee:', newEmployee);
     if (!newEmployee.name || !newEmployee.email || !newEmployee.password) {
       alert('Please fill in all required fields');
       return;
     }
 
     try {
-      console.log('Calling dataService.saveEmployee...');
       const createdEmployee = await dataService.saveEmployee(newEmployee);
-      console.log('Employee created successfully:', createdEmployee);
       setEmployees([createdEmployee, ...employees]);
       setNewEmployee({
         name: '',
@@ -116,71 +109,62 @@ const AdminDashboard = () => {
       setShowEmployeeForm(false);
     } catch (error) {
       console.error('Error creating employee:', error);
-      alert(`Error creating employee: ${error.message}`);
+      alert('Error creating employee. Please try again.');
     }
   };
 
   const handleEditEmployee = async () => {
-    console.log('Editing employee:', editingEmployee);
     if (!editingEmployee.name || !editingEmployee.email) {
       alert('Please fill in all required fields');
       return;
     }
 
     try {
-      console.log('Calling dataService.updateEmployee...');
       const updatedEmployee = await dataService.updateEmployee(editingEmployee.id, {
         name: editingEmployee.name,
         email: editingEmployee.email,
         phone: editingEmployee.phone
       });
-      console.log('Employee updated successfully:', updatedEmployee);
       setEmployees(employees.map(emp => 
         emp.id === editingEmployee.id ? updatedEmployee : emp
       ));
       setEditingEmployee(null);
     } catch (error) {
       console.error('Error updating employee:', error);
-      alert(`Error updating employee: ${error.message}`);
+      alert('Error updating employee. Please try again.');
     }
   };
 
   const handleDeleteEmployee = async (id) => {
-    console.log('Deleting employee with ID:', id);
     if (!confirm('Are you sure you want to delete this employee? This action cannot be undone.')) {
       return;
     }
 
     try {
-      console.log('Calling dataService.deleteEmployee...');
       await dataService.deleteEmployee(id);
-      console.log('Employee deleted successfully');
       setEmployees(employees.filter(emp => emp.id !== id));
     } catch (error) {
       console.error('Error deleting employee:', error);
-      alert(`Error deleting employee: ${error.message}`);
+      alert('Error deleting employee. Please try again.');
     }
   };
 
   const handleUpdateVacationBalance = async () => {
-    console.log('Updating vacation balance:', editingVacation);
     if (!editingVacation) return;
 
     try {
-      console.log('Calling dataService.updateEmployeeVacationBalance...');
       const updatedEmployee = await dataService.updateEmployeeVacationBalance(
         editingVacation.id,
         editingVacation.annual_leave_remaining,
         editingVacation.sick_leave_remaining
       );
-      console.log('Vacation balance updated successfully:', updatedEmployee);
       setEmployees(employees.map(emp => 
         emp.id === editingVacation.id ? updatedEmployee : emp
       ));
       setEditingVacation(null);
     } catch (error) {
       console.error('Error updating vacation balance:', error);
-      alert(`Error updating vacation balance: ${error.message}`);
+      alert('Error updating vacation balance. Please try again.');
     }
   };
 

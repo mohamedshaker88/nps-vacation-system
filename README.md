@@ -1,239 +1,172 @@
 # NPS Team Vacation Management System
 
-A comprehensive vacation management system built with React, Vite, and Supabase for the NPS Team. Features both admin and employee portals with real-time data persistence.
+A comprehensive vacation management system built with React, Vite, Tailwind CSS, and Supabase for the NPS Team.
 
-## 🚀 Features
+## 🚀 **Production Deployment**
 
-### Admin Dashboard
-- **Dashboard Overview**: Real-time statistics and recent requests
-- **Request Management**: Approve/reject leave requests
-- **Employee Management**: View all registered employees and their leave balances
-- **Policy Management**: Comprehensive leave policies and guidelines
-- **Real-time Updates**: Live data synchronization with Supabase
+- **Main Application**: https://vaccation-management-system-9dvty3ma7.vercel.app
+- **Admin Portal**: https://vaccation-management-system-9dvty3ma7.vercel.app/admin
+- **Employee Portal**: https://vaccation-management-system-9dvty3ma7.vercel.app/employee
 
-### Employee Portal
-- **User Authentication**: Secure login/registration with company email validation
-- **Leave Request Submission**: Comprehensive request forms with validation
-- **Request Tracking**: View all submitted requests and their status
-- **Leave Balance**: Real-time tracking of annual and sick leave balances
-- **Policy Information**: Access to company leave policies and guidelines
+## 🔐 **Access Credentials**
 
-## 🛠️ Tech Stack
-
-- **Frontend**: React 18, Vite, Tailwind CSS
-- **Backend**: Supabase (PostgreSQL)
-- **Authentication**: Supabase Auth
-- **Icons**: Lucide React
-- **Routing**: React Router DOM
-
-## 📋 Prerequisites
-
-- Node.js (v16 or higher)
-- npm or yarn
-- Supabase account
-
-## 🔧 Setup Instructions
-
-### 1. Clone and Install Dependencies
-
-```bash
-# Install dependencies
-npm install
-```
-
-### 2. Set Up Supabase
-
-1. **Create a Supabase Project**:
-   - Go to [supabase.com](https://supabase.com)
-   - Create a new project
-   - Note your project URL and anon key
-
-2. **Create Database Tables**:
-
-Run these SQL commands in your Supabase SQL editor:
-
-```sql
--- Create employees table
-CREATE TABLE employees (
-  id BIGSERIAL PRIMARY KEY,
-  name VARCHAR(255) NOT NULL,
-  email VARCHAR(255) UNIQUE NOT NULL,
-  phone VARCHAR(50),
-  password VARCHAR(255) NOT NULL,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Create requests table
-CREATE TABLE requests (
-  id BIGSERIAL PRIMARY KEY,
-  employee_name VARCHAR(255) NOT NULL,
-  employee_email VARCHAR(255) NOT NULL,
-  type VARCHAR(100) NOT NULL,
-  start_date DATE NOT NULL,
-  end_date DATE NOT NULL,
-  days INTEGER NOT NULL,
-  reason TEXT,
-  status VARCHAR(50) DEFAULT 'Pending',
-  submit_date DATE NOT NULL,
-  coverage_arranged BOOLEAN DEFAULT FALSE,
-  coverage_by VARCHAR(255),
-  emergency_contact VARCHAR(255),
-  additional_notes TEXT,
-  medical_certificate BOOLEAN DEFAULT FALSE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Create indexes for better performance
-CREATE INDEX idx_requests_employee_email ON requests(employee_email);
-CREATE INDEX idx_requests_status ON requests(status);
-CREATE INDEX idx_employees_email ON employees(email);
-```
-
-3. **Configure Environment Variables**:
-
-Create a `.env` file in the root directory:
-
-```env
-VITE_SUPABASE_URL=your_supabase_project_url
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-```
-
-### 3. Run the Application
-
-```bash
-# Development mode
-npm run dev
-
-# Build for production
-npm run build
-
-# Preview production build
-npm run preview
-```
-
-## 🔐 Authentication
-
-### Admin Access
-- **URL**: `/admin`
+### Admin Portal
 - **Username**: `admin`
 - **Password**: `NPSTEAM!`
 
-### Employee Access
-- **URL**: `/employee`
-- **Registration**: Employees can register with their `@technetworkinc.com` email
-- **Login**: Use registered email and password
+### Employee Portal
+- Use registered employee email and password
+- Default test employee: `john.doe@technetworkinc.com` / `password123`
 
-## 📊 Leave Types & Policies
+## ✨ **Features**
 
-### Paid Leave
+### **Admin Dashboard**
+- **Dashboard Overview**: Real-time statistics and recent requests
+- **Employee Management**:
+  - ✅ Create new employees
+  - ✅ Edit existing employee details (name, email, phone)
+  - ✅ Delete employees with confirmation
+  - ✅ Manage vacation balances (annual & sick leave)
+- **Request Management**: Approve/reject leave requests
+- **Policy Management**: View company leave policies and guidelines
+
+### **Employee Portal**
+- Submit leave requests
+- View request history and status
+- Check remaining vacation days
+- Update personal information
+
+## 🛠 **Technology Stack**
+
+- **Frontend**: React 18 + Vite
+- **Styling**: Tailwind CSS
+- **Database**: Supabase (PostgreSQL)
+- **Deployment**: Vercel
+- **Icons**: Lucide React
+- **State Management**: React Hooks
+
+## 📊 **Database Schema**
+
+### Employees Table
+```sql
+- id (BIGSERIAL PRIMARY KEY)
+- name (VARCHAR)
+- email (VARCHAR UNIQUE)
+- phone (VARCHAR)
+- password (VARCHAR)
+- annual_leave_remaining (INTEGER DEFAULT 15)
+- sick_leave_remaining (INTEGER DEFAULT 10)
+- created_at (TIMESTAMP)
+```
+
+### Requests Table
+```sql
+- id (BIGSERIAL PRIMARY KEY)
+- employee_name (VARCHAR)
+- employee_email (VARCHAR)
+- type (VARCHAR)
+- start_date (DATE)
+- end_date (DATE)
+- days (INTEGER)
+- reason (TEXT)
+- status (VARCHAR DEFAULT 'Pending')
+- submit_date (DATE)
+- coverage_arranged (BOOLEAN)
+- coverage_by (VARCHAR)
+- emergency_contact (VARCHAR)
+- additional_notes (TEXT)
+- medical_certificate (BOOLEAN)
+- created_at (TIMESTAMP)
+```
+
+## 🏢 **Leave Policy**
+
+### **Paid Leave**
 - **Annual Leave**: 15 days per year
 - **Sick Leave**: 10 days per year (1 day max per request)
 
-### Unpaid Leave
-- Emergency Leave (3 days)
-- Personal Leave (1 day)
-- Maternity Leave (70 days)
-- Paternity Leave (7 days)
-- Bereavement Leave (5 days)
-- Religious Leave (2 days)
-- Compensatory Time (3 days)
+### **Unpaid Leave**
+- Emergency Leave: 3 days per incident
+- Personal Days: As needed
+- Maternity Leave: 70 days
+- Paternity Leave: 7 days
+- Bereavement Leave: 5 days per incident
+- Religious Leave: 2 days
+- Compensatory Time: 3 days
+- Unpaid Leave: Up to 30 days
 
-## 🚀 Deployment
+## 🔧 **Setup Instructions**
 
-### Deploy to Vercel
+### **For Development**
+1. Clone the repository
+2. Install dependencies: `npm install`
+3. Set up environment variables (see below)
+4. Run development server: `npm run dev`
 
-1. **Install Vercel CLI**:
-   ```bash
-   npm install -g vercel
-   ```
-
-2. **Deploy**:
-   ```bash
-   vercel --prod
-   ```
-
-3. **Set Environment Variables** in Vercel dashboard:
-   - `VITE_SUPABASE_URL`
-   - `VITE_SUPABASE_ANON_KEY`
-
-### Deploy to Netlify
-
-1. **Build the project**:
-   ```bash
-   npm run build
-   ```
-
-2. **Deploy the `dist` folder** to Netlify
-
-3. **Set Environment Variables** in Netlify dashboard
-
-## 🔧 Configuration
-
-### Customizing Leave Types
-
-Edit the `leaveTypes` array in both `AdminDashboard.jsx` and `EmployeePortal.jsx`:
-
-```javascript
-const leaveTypes = [
-  { value: 'Annual Leave', label: 'Annual Leave', maxDays: 14, paid: true },
-  // Add more leave types here
-];
+### **Environment Variables**
+Create a `.env` file with:
+```env
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 
-### Customizing Company Email Domain
+### **Database Setup**
+1. Create a Supabase project
+2. Run the `supabase-setup.sql` script in Supabase SQL Editor
+3. For existing databases, run `migration-add-vacation-balance.sql`
 
-Update the `validateEmail` function in `EmployeePortal.jsx`:
+## 📱 **Usage Guide**
 
-```javascript
-const validateEmail = (email) => {
-  return email.toLowerCase().endsWith('@yourcompany.com');
-};
-```
+### **Admin Operations**
+1. **Create Employee**: Click "Add Employee" → Fill form → Create
+2. **Edit Employee**: Click edit icon → Modify fields → Save
+3. **Delete Employee**: Click delete icon → Confirm deletion
+4. **Manage Vacation**: Click calendar icon → Update days → Save
+5. **Approve Requests**: View requests → Click Approve/Reject
 
-## 📱 Features
+### **Employee Operations**
+1. **Submit Request**: Fill request form → Submit
+2. **Check Status**: View request history
+3. **Update Profile**: Modify personal information
 
-### Real-time Data
-- All data is stored in Supabase PostgreSQL database
-- Real-time synchronization across all users
-- Automatic data persistence
+## 🔒 **Security Features**
 
-### Responsive Design
-- Mobile-friendly interface
-- Optimized for desktop and tablet use
-- Modern UI with Tailwind CSS
+- Row Level Security (RLS) enabled
+- Admin policies for full access
+- Employee policies for own data only
+- Password protection for all accounts
+- Confirmation dialogs for destructive actions
 
-### Security
-- Email domain validation
-- Secure password storage (should be hashed in production)
-- Protected admin routes
+## 📈 **Performance**
 
-## 🐛 Troubleshooting
+- Optimized database queries with indexes
+- Lazy loading of components
+- Efficient state management
+- Responsive design for all devices
 
-### Common Issues
+## 🚨 **Important Notes**
 
-1. **Supabase Connection Error**:
-   - Verify your environment variables
-   - Check Supabase project status
-   - Ensure database tables are created
+- **24/7 Coverage**: System designed for 5pm-1am daily operations
+- **Minimum Staff**: 8 staff members must be available
+- **Coverage Requirements**: All leave requests require coverage arrangements
+- **Peak Periods**: 4 weeks advance notice for holidays
+- **Maximum Concurrent Leave**: 3 people maximum
 
-2. **Build Errors**:
-   - Clear node_modules and reinstall: `rm -rf node_modules && npm install`
-   - Check Node.js version compatibility
+## 🆘 **Support**
 
-3. **Authentication Issues**:
-   - Verify email domain validation
-   - Check Supabase authentication settings
+For technical issues or questions:
+1. Check browser console for error messages
+2. Verify database connection and permissions
+3. Ensure environment variables are correctly set
+4. Contact system administrator
 
-## 📞 Support
+## 📝 **Version History**
 
-For technical support or questions:
-- Email: support@technetworkinc.com
-- Documentation: [Project Wiki](link-to-wiki)
-
-## 📄 License
-
-This project is proprietary software for NPS Team use only.
+- **v1.0.0**: Initial release with basic functionality
+- **v1.1.0**: Added comprehensive employee management
+- **v1.2.0**: Added vacation balance management
+- **v1.3.0**: Production-ready with full CRUD operations
 
 ---
 
-**Built with ❤️ for the NPS Team** 
+**Built for NPS Team** | **Vacation Management System** | **Production Ready** ✅ 
