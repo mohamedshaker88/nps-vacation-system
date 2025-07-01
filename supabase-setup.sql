@@ -8,6 +8,8 @@ CREATE TABLE employees (
   email VARCHAR(255) UNIQUE NOT NULL,
   phone VARCHAR(50),
   password VARCHAR(255) NOT NULL,
+  annual_leave_remaining INTEGER DEFAULT 15,
+  sick_leave_remaining INTEGER DEFAULT 10,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -72,11 +74,14 @@ CREATE POLICY "Admin can view all requests" ON requests
 CREATE POLICY "Admin can update request status" ON requests
   FOR UPDATE USING (true);
 
+CREATE POLICY "Admin can manage employees" ON employees
+  FOR ALL USING (true);
+
 -- Insert sample data (optional)
-INSERT INTO employees (name, email, phone, password) VALUES
-  ('John Doe', 'john.doe@technetworkinc.com', '+1234567890', 'password123'),
-  ('Jane Smith', 'jane.smith@technetworkinc.com', '+1234567891', 'password123'),
-  ('Mike Johnson', 'mike.johnson@technetworkinc.com', '+1234567892', 'password123');
+INSERT INTO employees (name, email, phone, password, annual_leave_remaining, sick_leave_remaining) VALUES
+  ('John Doe', 'john.doe@technetworkinc.com', '+1234567890', 'password123', 15, 10),
+  ('Jane Smith', 'jane.smith@technetworkinc.com', '+1234567891', 'password123', 12, 8),
+  ('Mike Johnson', 'mike.johnson@technetworkinc.com', '+1234567892', 'password123', 10, 10);
 
 -- Insert sample requests (optional)
 INSERT INTO requests (employee_name, employee_email, type, start_date, end_date, days, reason, status, submit_date, coverage_arranged, coverage_by) VALUES

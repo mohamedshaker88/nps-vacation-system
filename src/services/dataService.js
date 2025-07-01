@@ -32,6 +32,41 @@ export const dataService = {
     return data
   },
 
+  async deleteEmployee(id) {
+    const { error } = await supabase
+      .from('employees')
+      .delete()
+      .eq('id', id)
+    
+    if (error) throw error
+    return true
+  },
+
+  async updateEmployee(id, updates) {
+    const { data, error } = await supabase
+      .from('employees')
+      .update(updates)
+      .eq('id', id)
+      .select()
+    
+    if (error) throw error
+    return data[0]
+  },
+
+  async updateEmployeeVacationBalance(id, annualLeaveRemaining, sickLeaveRemaining) {
+    const { data, error } = await supabase
+      .from('employees')
+      .update({ 
+        annual_leave_remaining: annualLeaveRemaining,
+        sick_leave_remaining: sickLeaveRemaining
+      })
+      .eq('id', id)
+      .select()
+    
+    if (error) throw error
+    return data[0]
+  },
+
   // Request operations
   async saveRequest(request) {
     const { data, error } = await supabase
