@@ -302,10 +302,36 @@ const AdminDashboard = () => {
   const handlePolicySave = async () => {
     setPolicyLoading(true);
     setPolicyError('');
+    
+    // Check if entitlements are being changed
+    const entitlementsChanged = policy && policyDraft && 
+      (policy.entitlements?.annualLeave !== policyDraft.entitlements?.annualLeave ||
+       policy.entitlements?.sickLeave !== policyDraft.entitlements?.sickLeave);
+    
+    if (entitlementsChanged) {
+      const confirmed = window.confirm(
+        `This will update ALL employees' vacation balances:\n` +
+        `Annual Leave: ${policy.entitlements?.annualLeave || 15} → ${policyDraft.entitlements?.annualLeave} days\n` +
+        `Sick Leave: ${policy.entitlements?.sickLeave || 10} → ${policyDraft.entitlements?.sickLeave} days\n\n` +
+        `Are you sure you want to proceed?`
+      );
+      
+      if (!confirmed) {
+        setPolicyLoading(false);
+        return;
+      }
+    }
+    
     try {
       await dataService.updatePolicy(policyDraft);
       setPolicy(policyDraft);
       setEditingPolicy(false);
+      
+      if (entitlementsChanged) {
+        alert('Policy updated successfully! All employee vacation balances have been updated.');
+      } else {
+        alert('Policy updated successfully!');
+      }
     } catch (e) {
       setPolicyError('Failed to save policy');
     } finally {
@@ -976,17 +1002,57 @@ const AdminDashboard = () => {
         <div className="text-red-600">{policyError}</div>
       ) : editingPolicy ? (
         <div className="space-y-4">
-          {/* Example: Edit leave types as JSON */}
+          {/* Edit leave types */}
           <div>
             <label className="block font-medium mb-1">Leave Types (JSON)</label>
             <textarea
               className="w-full border rounded p-2 font-mono text-xs"
               rows={8}
               value={JSON.stringify(policyDraft?.leaveTypes || [], null, 2)}
-              onChange={e => handlePolicyDraftChange('leaveTypes', JSON.parse(e.target.value))}
+              onChange={e => {
+                try {
+                  handlePolicyDraftChange('leaveTypes', JSON.parse(e.target.value));
+                } catch (err) {
+                  // Invalid JSON, don't update
+                }
+              }}
             />
           </div>
-          {/* Add more editors for other sections as needed */}
+          
+          {/* Edit entitlements */}
+          <div>
+            <label className="block font-medium mb-1">Entitlements (JSON)</label>
+            <textarea
+              className="w-full border rounded p-2 font-mono text-xs"
+              rows={4}
+              value={JSON.stringify(policyDraft?.entitlements || {}, null, 2)}
+              onChange={e => {
+                try {
+                  handlePolicyDraftChange('entitlements', JSON.parse(e.target.value));
+                } catch (err) {
+                  // Invalid JSON, don't update
+                }
+              }}
+            />
+          </div>
+          
+          {/* Edit guidelines */}
+          <div>
+            <label className="block font-medium mb-1">Guidelines (JSON)</label>
+            <textarea
+              className="w-full border rounded p-2 font-mono text-xs"
+              rows={6}
+              value={JSON.stringify(policyDraft?.guidelines || {}, null, 2)}
+              onChange={e => {
+                try {
+                  handlePolicyDraftChange('guidelines', JSON.parse(e.target.value));
+                } catch (err) {
+                  // Invalid JSON, don't update
+                }
+              }}
+            />
+          </div>
+          
           <div className="flex gap-2">
             <button onClick={handlePolicySave} className="bg-blue-600 text-white px-4 py-2 rounded">Publish</button>
             <button onClick={handlePolicyCancel} className="bg-gray-300 px-4 py-2 rounded">Cancel</button>
@@ -994,12 +1060,57 @@ const AdminDashboard = () => {
         </div>
       ) : policy ? (
         <div>
-          {/* Render policy sections dynamically */}
-          <div className="mb-4">
-            <h3 className="font-semibold mb-2">Leave Types</h3>
-            <pre className="bg-gray-100 p-2 rounded text-xs overflow-x-auto">{JSON.stringify(policy.leaveTypes, null, 2)}</pre>
+          {/* Display policy sections in a readable format */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div className="bg-white rounded-lg shadow-sm border p-6">
+              <h3 className="text-lg font-semibold mb-4 text-blue-800">Leave Types</h3>
+              <div className="space-y-2">
+                {policy.leaveTypes?.map((type, index) => (
+                  <div key={index} className="flex justify-between text-sm">
+                    <span>{type.label}:</span>
+                    <span className="font-medium">{type.maxDays} days ({type.paid ? 'Paid' : 'Unpaid'})</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            <div className="bg-white rounded-lg shadow-sm border p-6">
+              <h3 className="text-lg font-semibold mb-4 text-green-800">Entitlements</h3>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span>Annual Leave:</span>
+                  <span className="font-medium">{policy.entitlements?.annualLeave || 15} days per year</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Sick Leave:</span>
+                  <span className="font-medium">{policy.entitlements?.sickLeave || 10} days per year</span>
+                </div>
+              </div>
+            </div>
           </div>
-          {/* Add more sections as needed */}
+          
+          <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
+            <h3 className="text-lg font-semibold mb-4">Guidelines</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <h4 className="font-medium mb-3 text-gray-800">Request Procedures</h4>
+                <ul className="space-y-2 text-sm text-gray-600">
+                  {policy.guidelines?.requestProcedures?.map((procedure, index) => (
+                    <li key={index}>• {procedure}</li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <h4 className="font-medium mb-3 text-gray-800">Coverage Requirements</h4>
+                <ul className="space-y-2 text-sm text-gray-600">
+                  {policy.guidelines?.coverageRequirements?.map((requirement, index) => (
+                    <li key={index}>• {requirement}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+          
           <button onClick={handlePolicyEdit} className="bg-blue-600 text-white px-4 py-2 rounded">Edit Policy</button>
         </div>
       ) : (

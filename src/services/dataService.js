@@ -151,13 +151,34 @@ export const dataService = {
   async updatePolicy(content) {
     // Unpublish all current policies
     await supabase.from('policies').update({ published: false }).eq('published', true);
+    
     // Insert new published policy
     const { data, error } = await supabase
       .from('policies')
       .insert([{ content, published: true }])
       .select()
       .single();
+    
     if (error) throw error;
+    
+    // Update all employees' vacation balances based on new policy
+    if (content.entitlements) {
+      const { annualLeave, sickLeave } = content.entitlements;
+      
+      // Update all employees with new balances
+      const { error: updateError } = await supabase
+        .from('employees')
+        .update({ 
+          annual_leave_remaining: annualLeave,
+          sick_leave_remaining: sickLeave
+        });
+      
+      if (updateError) {
+        console.error('Error updating employee balances:', updateError);
+        // Don't throw error here to avoid rolling back policy update
+      }
+    }
+    
     return data;
   }
 } 

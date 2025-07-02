@@ -266,7 +266,7 @@ const EmployeePortal = () => {
     }
   };
 
-  // Calculate leave balances
+  // Calculate leave balances using dynamic policy
   const usedAnnual = myRequests.filter(r => 
     r.type === 'Annual Leave' && r.status === 'Approved'
   ).reduce((sum, r) => sum + r.days, 0);
@@ -274,6 +274,10 @@ const EmployeePortal = () => {
   const usedSick = myRequests.filter(r => 
     r.type === 'Sick Leave' && r.status === 'Approved'
   ).reduce((sum, r) => sum + r.days, 0);
+
+  const annualLeaveEntitlement = policy?.entitlements?.annualLeave || 15;
+  const sickLeaveEntitlement = policy?.entitlements?.sickLeave || 10;
+  const dynamicLeaveTypes = policy?.leaveTypes || leaveTypes; // Fallback to hardcoded if no policy
 
   // Authentication forms
   if (!isAuthenticated) {
@@ -459,7 +463,7 @@ const EmployeePortal = () => {
             <div>
               <p className="text-blue-600 text-sm font-medium">Annual Leave</p>
               <p className="text-2xl font-bold text-blue-800">
-                {15 - usedAnnual}/15
+                {annualLeaveEntitlement - usedAnnual}/{annualLeaveEntitlement}
               </p>
               <p className="text-xs text-blue-600">Days Remaining</p>
             </div>
@@ -468,7 +472,7 @@ const EmployeePortal = () => {
           <div className="mt-3 w-full bg-blue-200 rounded-full h-2">
             <div 
               className="bg-blue-600 h-2 rounded-full" 
-              style={{width: `${(usedAnnual / 15) * 100}%`}}
+              style={{width: `${(usedAnnual / annualLeaveEntitlement) * 100}%`}}
             ></div>
           </div>
         </div>
@@ -478,7 +482,7 @@ const EmployeePortal = () => {
             <div>
               <p className="text-green-600 text-sm font-medium">Sick Leave</p>
               <p className="text-2xl font-bold text-green-800">
-                {10 - usedSick}/10
+                {sickLeaveEntitlement - usedSick}/{sickLeaveEntitlement}
               </p>
               <p className="text-xs text-green-600">Days Remaining</p>
             </div>
@@ -487,7 +491,7 @@ const EmployeePortal = () => {
           <div className="mt-3 w-full bg-green-200 rounded-full h-2">
             <div 
               className="bg-green-600 h-2 rounded-full" 
-              style={{width: `${(usedSick / 10) * 100}%`}}
+              style={{width: `${(usedSick / sickLeaveEntitlement) * 100}%`}}
             ></div>
           </div>
         </div>
@@ -561,7 +565,7 @@ const EmployeePortal = () => {
             className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="">Select Leave Type</option>
-            {leaveTypes.map(type => (
+            {dynamicLeaveTypes.map(type => (
               <option key={type.value} value={type.value}>
                 {type.label} - {type.paid ? 'Paid' : 'Unpaid'} (Max: {type.maxDays} days)
               </option>
@@ -570,7 +574,7 @@ const EmployeePortal = () => {
           {newRequest.type && (
             <div className="mt-2 p-3 bg-blue-50 rounded-md">
               <p className="text-sm text-blue-800">
-                {leaveTypes.find(t => t.value === newRequest.type)?.description}
+                {dynamicLeaveTypes.find(t => t.value === newRequest.type)?.description}
               </p>
             </div>
           )}
@@ -773,9 +777,54 @@ const EmployeePortal = () => {
         <div className="text-red-600">{policyError}</div>
       ) : policy ? (
         <div>
-          <div className="mb-4">
-            <h3 className="font-semibold mb-2">Leave Types</h3>
-            <pre className="bg-gray-100 p-2 rounded text-xs overflow-x-auto">{JSON.stringify(policy.leaveTypes, null, 2)}</pre>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div className="bg-white rounded-lg shadow-sm border p-6">
+              <h3 className="text-lg font-semibold mb-4 text-blue-800">Leave Types</h3>
+              <div className="space-y-2">
+                {policy.leaveTypes?.map((type, index) => (
+                  <div key={index} className="flex justify-between text-sm">
+                    <span>{type.label}:</span>
+                    <span className="font-medium">{type.maxDays} days ({type.paid ? 'Paid' : 'Unpaid'})</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            <div className="bg-white rounded-lg shadow-sm border p-6">
+              <h3 className="text-lg font-semibold mb-4 text-green-800">Your Entitlements</h3>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span>Annual Leave:</span>
+                  <span className="font-medium">{policy.entitlements?.annualLeave || 15} days per year</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Sick Leave:</span>
+                  <span className="font-medium">{policy.entitlements?.sickLeave || 10} days per year</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
+            <h3 className="text-lg font-semibold mb-4">Guidelines</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <h4 className="font-medium mb-3 text-gray-800">Request Procedures</h4>
+                <ul className="space-y-2 text-sm text-gray-600">
+                  {policy.guidelines?.requestProcedures?.map((procedure, index) => (
+                    <li key={index}>• {procedure}</li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <h4 className="font-medium mb-3 text-gray-800">Coverage Requirements</h4>
+                <ul className="space-y-2 text-sm text-gray-600">
+                  {policy.guidelines?.coverageRequirements?.map((requirement, index) => (
+                    <li key={index}>• {requirement}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
           </div>
         </div>
       ) : (
