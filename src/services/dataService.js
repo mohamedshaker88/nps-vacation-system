@@ -314,5 +314,94 @@ export const dataService = {
     };
 
     return await this.saveWorkSchedule(defaultSchedule);
+  },
+
+  // Work Schedule Template operations
+  async getWorkScheduleTemplates() {
+    const { data, error } = await supabase
+      .from('work_schedule_templates')
+      .select(`
+        *,
+        employees (
+          id,
+          name,
+          email
+        )
+      `)
+      .eq('is_active', true)
+      .order('employees(name)')
+    
+    if (error) throw error
+    return data || []
+  },
+
+  async getWorkScheduleTemplateByEmployee(employeeId) {
+    const { data, error } = await supabase
+      .from('work_schedule_templates')
+      .select('*')
+      .eq('employee_id', employeeId)
+      .eq('is_active', true)
+      .single()
+    
+    if (error && error.code !== 'PGRST116') throw error
+    return data
+  },
+
+  async saveWorkScheduleTemplate(template) {
+    const { data, error } = await supabase
+      .from('work_schedule_templates')
+      .upsert([template], { 
+        onConflict: 'employee_id',
+        ignoreDuplicates: false 
+      })
+      .select()
+    
+    if (error) throw error
+    return data[0]
+  },
+
+  async updateWorkScheduleTemplate(id, updates) {
+    const { data, error } = await supabase
+      .from('work_schedule_templates')
+      .update(updates)
+      .eq('id', id)
+      .select()
+    
+    if (error) throw error
+    return data[0]
+  },
+
+  async deleteWorkScheduleTemplate(id) {
+    const { error } = await supabase
+      .from('work_schedule_templates')
+      .delete()
+      .eq('id', id)
+    
+    if (error) throw error
+    return true
+  },
+
+  async generateWeekSchedules(weekStartDate) {
+    const { data, error } = await supabase
+      .rpc('generate_week_schedules', { p_week_start_date: weekStartDate })
+    
+    if (error) throw error
+    return data
+  },
+
+  async createDefaultTemplateForEmployee(employeeId) {
+    const defaultTemplate = {
+      employee_id: employeeId,
+      monday_status: 'working',
+      tuesday_status: 'working',
+      wednesday_status: 'working',
+      thursday_status: 'working',
+      friday_status: 'working',
+      saturday_status: 'off',
+      sunday_status: 'off',
+      is_active: true
+    };
+
+    return await this.saveWorkScheduleTemplate(defaultTemplate);
   }
 } 

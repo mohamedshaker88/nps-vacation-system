@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, Users, Clock, CheckCircle, XCircle, AlertCircle, Plus, Edit, Trash2, User, Mail, Phone, MapPin, FileText, Download, LogOut, Eye, EyeOff, Save, X, RefreshCw } from 'lucide-react';
 import { dataService } from '../services/dataService';
 import WorkScheduleManager from './WorkScheduleManager';
+import WorkScheduleTemplateManager from './WorkScheduleTemplateManager';
 
 const AdminDashboard = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -1477,6 +1478,7 @@ const AdminDashboard = () => {
             { id: 'requests', label: 'Requests', icon: FileText },
             { id: 'employees', label: 'Employees', icon: Users },
             { id: 'schedule', label: 'Work Schedule', icon: Clock },
+            { id: 'templates', label: 'Templates', icon: Copy },
             { id: 'policies', label: 'Policies', icon: FileText }
           ].map(tab => (
             <button
@@ -1499,6 +1501,7 @@ const AdminDashboard = () => {
           {activeTab === 'requests' && renderRequests()}
           {activeTab === 'employees' && renderEmployees()}
           {activeTab === 'schedule' && <WorkScheduleManager />}
+          {activeTab === 'templates' && <WorkScheduleTemplateManager />}
           {activeTab === 'policies' && renderPolicies()}
         </div>
       </div>
