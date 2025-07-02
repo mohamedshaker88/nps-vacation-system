@@ -9,6 +9,7 @@ const EmployeePortal = () => {
   const [showRegister, setShowRegister] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [employeeDataLoading, setEmployeeDataLoading] = useState(false);
   
   const [loginForm, setLoginForm] = useState({ email: '', password: '' });
   const [registerForm, setRegisterForm] = useState({ 
@@ -60,8 +61,9 @@ const EmployeePortal = () => {
     if (savedAuth === 'true' && savedEmployee) {
       const employee = JSON.parse(savedEmployee);
       setIsAuthenticated(true);
-      setCurrentEmployee(employee);
-      loadEmployeeData(employee);
+      setEmployeeDataLoading(true);
+      // Refresh employee data from database to get latest vacation balances
+      refreshEmployeeData(employee.email);
     }
   }, []);
 
@@ -122,6 +124,28 @@ const EmployeePortal = () => {
     }
     fetchPolicy();
   }, []);
+
+  const refreshEmployeeData = async (email) => {
+    try {
+      setEmployeeDataLoading(true);
+      // Get fresh employee data from database
+      const freshEmployee = await dataService.getEmployeeByEmail(email);
+      setCurrentEmployee(freshEmployee);
+      
+      // Load requests for this employee
+      const employeeRequests = await dataService.getRequestsByEmployee(email);
+      setMyRequests(employeeRequests);
+
+      // Load all employees for coverage selection
+      const allEmployees = await dataService.getEmployees();
+      const otherEmployees = allEmployees.filter(emp => emp.email !== email);
+      setTeammates(otherEmployees);
+    } catch (error) {
+      console.error('Error refreshing employee data:', error);
+    } finally {
+      setEmployeeDataLoading(false);
+    }
+  };
 
   const loadEmployeeData = async (employee) => {
     try {
@@ -190,12 +214,12 @@ const EmployeePortal = () => {
       await dataService.saveEmployee(newEmployee);
 
       // Auto login
-      setCurrentEmployee(newEmployee);
       setIsAuthenticated(true);
       localStorage.setItem('employeeAuth', 'true');
       localStorage.setItem('currentEmployee', JSON.stringify(newEmployee));
       
-      loadEmployeeData(newEmployee);
+      // Refresh employee data to get latest vacation balances
+      refreshEmployeeData(newEmployee.email);
     } catch (error) {
       console.error('Error registering:', error);
       setAuthError('Error creating account. Please try again.');
@@ -225,12 +249,12 @@ const EmployeePortal = () => {
       }
 
       // Login successful
-      setCurrentEmployee(employee);
       setIsAuthenticated(true);
       localStorage.setItem('employeeAuth', 'true');
       localStorage.setItem('currentEmployee', JSON.stringify(employee));
       
-      loadEmployeeData(employee);
+      // Refresh employee data to get latest vacation balances
+      refreshEmployeeData(employee.email);
     } catch (error) {
       console.error('Error logging in:', error);
       setAuthError('Invalid email or password');
@@ -500,43 +524,43 @@ const EmployeePortal = () => {
   }
 
   const renderOverview = () => (
-    <div className="space-y-6">
-      {loading && (
-        <div className="text-center py-4">
+    <div className="space-y-4 sm:space-y-6">
+      {(loading || employeeDataLoading) && (
+        <div className="text-center py-8">
           <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <p className="mt-2 text-gray-600">Loading data...</p>
+          <p className="mt-2 text-gray-600">Loading your vacation data...</p>
         </div>
       )}
       
-      <div className="bg-white rounded-lg shadow-sm border p-6">
-        <div className="flex items-center justify-between mb-4">
+      <div className="bg-white rounded-lg shadow-sm border p-4 sm:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center space-x-3">
-            <div className="bg-blue-100 p-3 rounded-full">
-              <User className="h-6 w-6 text-blue-600" />
+            <div className="bg-blue-100 p-2 sm:p-3 rounded-full">
+              <User className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
             </div>
             <div>
-              <h2 className="text-xl font-semibold">Welcome, {currentEmployee.name}</h2>
-              <p className="text-gray-600">{currentEmployee.email}</p>
+              <h2 className="text-lg sm:text-xl font-semibold">Welcome, {currentEmployee.name}</h2>
+              <p className="text-sm sm:text-base text-gray-600">{currentEmployee.email}</p>
             </div>
           </div>
-          <div className="text-right">
+          <div className="text-left sm:text-right">
             <p className="text-sm text-gray-600">{currentEmployee.phone}</p>
             <p className="text-sm text-gray-600">technetworkinc.com</p>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-blue-50 p-6 rounded-lg border border-blue-200">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+        <div className="bg-blue-50 p-4 sm:p-6 rounded-lg border border-blue-200">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-blue-600 text-sm font-medium">Annual Leave</p>
-              <p className="text-2xl font-bold text-blue-800">
+              <p className="text-xl sm:text-2xl font-bold text-blue-800">
                 {annualRemaining}/{annualLeaveEntitlement}
               </p>
               <p className="text-xs text-blue-600">Days Remaining</p>
             </div>
-            <Calendar className="h-8 w-8 text-blue-600" />
+            <Calendar className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
           </div>
           <div className="mt-3 w-full bg-blue-200 rounded-full h-2">
             <div 
@@ -546,16 +570,16 @@ const EmployeePortal = () => {
           </div>
         </div>
 
-        <div className="bg-green-50 p-6 rounded-lg border border-green-200">
+        <div className="bg-green-50 p-4 sm:p-6 rounded-lg border border-green-200">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-green-600 text-sm font-medium">Sick Leave</p>
-              <p className="text-2xl font-bold text-green-800">
+              <p className="text-xl sm:text-2xl font-bold text-green-800">
                 {sickRemaining}/{sickLeaveEntitlement}
               </p>
               <p className="text-xs text-green-600">Days Remaining</p>
             </div>
-            <FileText className="h-8 w-8 text-green-600" />
+            <FileText className="h-6 w-6 sm:h-8 sm:w-8 text-green-600" />
           </div>
           <div className="mt-3 w-full bg-green-200 rounded-full h-2">
             <div 
@@ -565,26 +589,26 @@ const EmployeePortal = () => {
           </div>
         </div>
 
-        <div className="bg-purple-50 p-6 rounded-lg border border-purple-200">
+        <div className="bg-purple-50 p-4 sm:p-6 rounded-lg border border-purple-200 sm:col-span-2 lg:col-span-1">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-purple-600 text-sm font-medium">Pending Requests</p>
-              <p className="text-2xl font-bold text-purple-800">
+              <p className="text-xl sm:text-2xl font-bold text-purple-800">
                 {myRequests.filter(r => r.status === 'Pending').length}
               </p>
               <p className="text-xs text-purple-600">Awaiting Approval</p>
             </div>
-            <Clock className="h-8 w-8 text-purple-600" />
+            <Clock className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600" />
           </div>
         </div>
       </div>
 
       <div className="bg-white rounded-lg shadow-sm border">
-        <div className="p-4 border-b flex items-center justify-between">
+        <div className="p-4 border-b flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <h3 className="text-lg font-semibold">Recent Requests</h3>
           <button
             onClick={() => setShowRequestForm(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center gap-2"
+            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center justify-center gap-2 text-sm sm:text-base"
           >
             <Send className="h-4 w-4" />
             New Request
@@ -595,14 +619,14 @@ const EmployeePortal = () => {
             <p className="text-gray-500 text-center py-4">No requests submitted yet</p>
           ) : (
             myRequests.slice(0, 3).map(request => (
-              <div key={request.id} className="flex items-center justify-between py-3 border-b last:border-b-0">
+              <div key={request.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between py-3 border-b last:border-b-0 gap-2">
                 <div>
-                  <div className="font-medium">{request.type}</div>
-                  <div className="text-sm text-gray-600">
+                  <div className="font-medium text-sm sm:text-base">{request.type}</div>
+                  <div className="text-xs sm:text-sm text-gray-600">
                     {request.start_date} {request.start_date !== request.end_date ? `to ${request.end_date}` : ''} • {request.days} day{request.days > 1 ? 's' : ''}
                   </div>
                 </div>
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(request.status)}`}>
+                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(request.status)} self-start sm:self-auto`}>
                   {request.status}
                 </span>
               </div>
@@ -906,21 +930,21 @@ const EmployeePortal = () => {
     <div className="min-h-screen bg-gray-50">
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-4 gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Employee Portal</h1>
-              <p className="text-sm text-gray-600">Leave Request & Management System</p>
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Employee Portal</h1>
+              <p className="text-xs sm:text-sm text-gray-600">Leave Request & Management System</p>
             </div>
-            <div className="flex items-center space-x-4">
-              <div className="text-sm text-gray-600">
-                <Clock className="inline h-4 w-4 mr-1" />
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+              <div className="text-xs sm:text-sm text-gray-600">
+                <Clock className="inline h-3 w-3 sm:h-4 sm:w-4 mr-1" />
                 Shift: 5:00 PM - 1:00 AM
               </div>
               <button
                 onClick={handleLogout}
-                className="flex items-center px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md"
+                className="flex items-center justify-center px-3 py-2 text-xs sm:text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md"
               >
-                <LogOut className="h-4 w-4 mr-1" />
+                <LogOut className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
                 Logout
               </button>
             </div>
@@ -928,8 +952,8 @@ const EmployeePortal = () => {
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="flex space-x-1 mb-6">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+        <div className="flex flex-wrap gap-1 sm:gap-2 mb-4 sm:mb-6">
           {[
             { id: 'overview', label: 'Overview', icon: Calendar },
             { id: 'requests', label: 'My Requests', icon: FileText },
@@ -938,13 +962,13 @@ const EmployeePortal = () => {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium ${
+              className={`flex items-center px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium ${
                 activeTab === tab.id
                   ? 'bg-blue-600 text-white'
                   : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
               }`}
             >
-              <tab.icon className="h-4 w-4 mr-2" />
+              <tab.icon className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
               {tab.label}
             </button>
           ))}
