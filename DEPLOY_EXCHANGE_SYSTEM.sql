@@ -14,6 +14,10 @@ DROP FUNCTION IF EXISTS get_exchange_request_status(bigint);
 DROP FUNCTION IF EXISTS admin_approve_request_safe(bigint, text);
 DROP FUNCTION IF EXISTS swap_work_schedules_bidirectional(bigint, bigint, date, date);
 DROP FUNCTION IF EXISTS fix_partner_approved_requests();
+DROP FUNCTION IF EXISTS get_or_create_work_schedule(bigint, date);
+DROP FUNCTION IF EXISTS update_schedules_on_approval();
+DROP FUNCTION IF EXISTS update_request_status_and_schedules_bidirectional();
+DROP FUNCTION IF EXISTS update_schedule_for_approved_leave();
 
 -- STEP 2: Ensure required tables exist
 CREATE TABLE IF NOT EXISTS work_schedules (
