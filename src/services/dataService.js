@@ -503,15 +503,39 @@ export const dataService = {
   },
 
   async approveExchangeRequest(requestId, employeeId, approved, notes = null) {
+    console.log('Calling approve_exchange_request with:', { 
+      requestId: requestId, 
+      employeeId: employeeId, 
+      approved: approved,
+      types: {
+        requestId: typeof requestId,
+        employeeId: typeof employeeId,
+        approved: typeof approved
+      }
+    })
+    
+    // Ensure proper types - convert to numbers if needed
+    const numericRequestId = parseInt(requestId)
+    const numericEmployeeId = parseInt(employeeId)
+    
+    if (isNaN(numericRequestId) || isNaN(numericEmployeeId)) {
+      throw new Error(`Invalid ID parameters: requestId=${requestId}, employeeId=${employeeId}`)
+    }
+    
     const { data, error } = await supabase
       .rpc('approve_exchange_request', { 
-        p_request_id: requestId,
-        p_employee_id: employeeId,
-        p_approved: approved,
+        p_request_id: numericRequestId,
+        p_employee_id: numericEmployeeId,
+        p_approved: Boolean(approved),
         p_notes: notes
       })
     
-    if (error) throw error
+    if (error) {
+      console.error('approve_exchange_request error:', error)
+      throw error
+    }
+    
+    console.log('approve_exchange_request result:', data)
     return data
   },
 
