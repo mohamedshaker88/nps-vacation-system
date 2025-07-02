@@ -185,13 +185,41 @@ const AdminDashboard = () => {
         editingVacation.sick_leave_total
       );
       
+      // Add a small delay to ensure database update is complete
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       // Refresh both employee and request data from database to ensure consistency
       const [updatedEmployees, updatedRequests] = await Promise.all([
         dataService.getEmployees(),
         dataService.getRequests()
       ]);
       
-      console.log('Updated employee data:', updatedEmployees.find(emp => emp.id === editingVacation.id));
+      const updatedEmployee = updatedEmployees.find(emp => emp.id === editingVacation.id);
+      console.log('Updated employee data:', updatedEmployee);
+      
+      // Debug the calculation for this specific employee
+      if (updatedEmployee) {
+        const usedAnnual = updatedRequests.filter(r => 
+          r.employee_email === updatedEmployee.email && 
+          r.type === 'Annual Leave' && 
+          r.status === 'Approved'
+        ).reduce((sum, r) => sum + r.days, 0);
+        
+        const hasExplicitAnnualRemaining = updatedEmployee.annual_leave_remaining !== null && updatedEmployee.annual_leave_remaining !== undefined;
+        const calculatedAnnualRemaining = hasExplicitAnnualRemaining 
+          ? updatedEmployee.annual_leave_remaining 
+          : (updatedEmployee.annual_leave_total || 15) - usedAnnual;
+        
+        console.log('Calculation debug:', {
+          employeeEmail: updatedEmployee.email,
+          annual_leave_remaining: updatedEmployee.annual_leave_remaining,
+          annual_leave_total: updatedEmployee.annual_leave_total,
+          usedAnnual,
+          hasExplicitAnnualRemaining,
+          calculatedAnnualRemaining
+        });
+      }
+      
       setEmployees(updatedEmployees);
       setRequests(updatedRequests);
       
@@ -920,10 +948,14 @@ const AdminDashboard = () => {
                     ).reduce((sum, r) => sum + r.days, 0);
 
                     // Use explicit remaining values if they exist, otherwise calculate from total
-                    const annualRemaining = employee.annual_leave_remaining !== null && employee.annual_leave_remaining !== undefined 
+                    // Check if the employee has explicit remaining values set (including 0)
+                    const hasExplicitAnnualRemaining = employee.annual_leave_remaining !== null && employee.annual_leave_remaining !== undefined;
+                    const hasExplicitSickRemaining = employee.sick_leave_remaining !== null && employee.sick_leave_remaining !== undefined;
+                    
+                    const annualRemaining = hasExplicitAnnualRemaining 
                       ? employee.annual_leave_remaining 
                       : (employee.annual_leave_total || 15) - usedAnnual;
-                    const sickRemaining = employee.sick_leave_remaining !== null && employee.sick_leave_remaining !== undefined 
+                    const sickRemaining = hasExplicitSickRemaining 
                       ? employee.sick_leave_remaining 
                       : (employee.sick_leave_total || 10) - usedSick;
 
