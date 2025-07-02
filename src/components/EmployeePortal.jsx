@@ -130,7 +130,17 @@ const EmployeePortal = () => {
       setEmployeeDataLoading(true);
       // Get fresh employee data from database
       const freshEmployee = await dataService.getEmployeeByEmail(email);
-      setCurrentEmployee(freshEmployee);
+      
+      if (freshEmployee) {
+        setCurrentEmployee(freshEmployee);
+      } else {
+        // Fallback to localStorage data if database fetch fails
+        const savedEmployee = localStorage.getItem('currentEmployee');
+        if (savedEmployee) {
+          const employee = JSON.parse(savedEmployee);
+          setCurrentEmployee(employee);
+        }
+      }
       
       // Load requests for this employee
       const employeeRequests = await dataService.getRequestsByEmployee(email);
@@ -142,6 +152,12 @@ const EmployeePortal = () => {
       setTeammates(otherEmployees);
     } catch (error) {
       console.error('Error refreshing employee data:', error);
+      // Fallback to localStorage data if refresh fails
+      const savedEmployee = localStorage.getItem('currentEmployee');
+      if (savedEmployee) {
+        const employee = JSON.parse(savedEmployee);
+        setCurrentEmployee(employee);
+      }
     } finally {
       setEmployeeDataLoading(false);
     }
@@ -371,6 +387,35 @@ const EmployeePortal = () => {
     ? currentEmployee.sick_leave_remaining 
     : (sickLeaveEntitlement - usedSick);
   const dynamicLeaveTypes = policy?.leaveTypes || leaveTypes; // Fallback to hardcoded if no policy
+
+  // Show loading state if authenticated but employee data is still loading
+  if (isAuthenticated && employeeDataLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <p className="mt-4 text-gray-600">Loading your account...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state if authenticated but no employee data
+  if (isAuthenticated && !currentEmployee) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">Unable to load your account data</p>
+          <button
+            onClick={handleLogout}
+            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+          >
+            Logout and try again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // Authentication forms
   if (!isAuthenticated) {
