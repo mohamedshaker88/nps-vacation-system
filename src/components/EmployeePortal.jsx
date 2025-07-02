@@ -32,8 +32,8 @@ const EmployeePortal = () => {
     emergencyContact: '',
     additionalNotes: '',
     medicalCertificate: false,
-    exchangeFromDate: '',
-    exchangeToDate: '',
+    exchangeDate: '',
+    exchangePartnerId: '',
     exchangeReason: ''
   });
 
@@ -72,7 +72,7 @@ const EmployeePortal = () => {
     { value: 'Bereavement Leave', label: 'Bereavement Leave', maxDays: 5, paid: false, description: 'Unpaid bereavement leave' },
     { value: 'Religious Leave', label: 'Religious Leave', maxDays: 2, paid: false, description: 'Unpaid religious observance' },
     { value: 'Compensatory Time', label: 'Comp Time', maxDays: 3, paid: false, description: 'Unpaid compensation time' },
-    { value: 'Exchange Off Days', label: 'Exchange Off Days', maxDays: 7, paid: false, description: 'Exchange scheduled off days with other days', isExchange: true }
+    { value: 'Exchange Off Days', label: 'Exchange Off Days', maxDays: 1, paid: false, description: 'Exchange scheduled off days with other days', isExchange: true }
   ];
 
   // Load data from Supabase
@@ -334,7 +334,7 @@ const EmployeePortal = () => {
 
     // Additional validation for exchange requests
     if (newRequest.type === 'Exchange Off Days') {
-      if (!newRequest.exchangeFromDate || !newRequest.exchangeToDate || !newRequest.exchangeReason) {
+      if (!newRequest.exchangeDate || !newRequest.exchangePartnerId || !newRequest.exchangeReason) {
         alert('Please fill in all exchange request fields');
         return;
       }
@@ -345,20 +345,20 @@ const EmployeePortal = () => {
         return;
       }
 
-      // Validate that the covering person has an off day on the requested date
-      if (newRequest.coverageBy) {
+      // Validate that the exchange partner has an off day on the requested date
+      if (newRequest.exchangePartnerId) {
         try {
-          const coveringEmployee = teammates.find(emp => emp.name === newRequest.coverageBy);
-          if (coveringEmployee) {
-            const dayStatus = await dataService.getEmployeeDayStatus(coveringEmployee.id, newRequest.startDate);
+          const exchangePartner = teammates.find(emp => emp.id === parseInt(newRequest.exchangePartnerId));
+          if (exchangePartner) {
+            const dayStatus = await dataService.getEmployeeDayStatus(exchangePartner.id, newRequest.startDate);
             if (dayStatus !== 'off') {
-              alert(`The selected coverage person (${newRequest.coverageBy}) is scheduled to work on ${newRequest.startDate}. Please select someone who has an off day on that date.`);
+              alert(`The selected exchange partner (${exchangePartner.name}) is scheduled to work on ${newRequest.startDate}. Please select someone who has an off day on that date.`);
               return;
             }
           }
         } catch (error) {
-          console.error('Error checking coverage availability:', error);
-          alert('Error validating coverage availability. Please try again.');
+          console.error('Error checking exchange partner availability:', error);
+          alert('Error validating exchange partner availability. Please try again.');
           return;
         }
       }
@@ -390,9 +390,10 @@ const EmployeePortal = () => {
       emergency_contact: newRequest.emergencyContact,
       additional_notes: newRequest.additionalNotes,
       medical_certificate: newRequest.medicalCertificate,
-      exchange_from_date: newRequest.exchangeFromDate,
-      exchange_to_date: newRequest.exchangeToDate,
-      exchange_reason: newRequest.exchangeReason
+      exchange_from_date: newRequest.exchangeDate,
+      exchange_to_date: newRequest.exchangeDate,
+      exchange_reason: newRequest.exchangeReason,
+      exchange_partner_id: newRequest.exchangePartnerId ? parseInt(newRequest.exchangePartnerId) : null
     };
 
     try {
@@ -410,8 +411,8 @@ const EmployeePortal = () => {
         emergencyContact: '',
         additionalNotes: '',
         medicalCertificate: false,
-        exchangeFromDate: '',
-        exchangeToDate: '',
+        exchangeDate: '',
+        exchangePartnerId: '',
         exchangeReason: ''
       });
       setShowRequestForm(false);
@@ -840,22 +841,26 @@ const EmployeePortal = () => {
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Exchange From Date *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Exchange Date *</label>
                 <input
                   type="date"
-                  value={newRequest.exchangeFromDate}
-                  onChange={(e) => setNewRequest({...newRequest, exchangeFromDate: e.target.value})}
+                  value={newRequest.exchangeDate}
+                  onChange={(e) => setNewRequest({...newRequest, exchangeDate: e.target.value})}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Exchange To Date *</label>
-                <input
-                  type="date"
-                  value={newRequest.exchangeToDate}
-                  onChange={(e) => setNewRequest({...newRequest, exchangeToDate: e.target.value})}
+                <label className="block text-sm font-medium text-gray-700 mb-1">Exchange Partner *</label>
+                <select
+                  value={newRequest.exchangePartnerId}
+                  onChange={(e) => setNewRequest({...newRequest, exchangePartnerId: e.target.value})}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                >
+                  <option value="">Select Exchange Partner</option>
+                  {teammates.map(teammate => (
+                    <option key={teammate.id} value={teammate.id}>{teammate.name} ({teammate.email})</option>
+                  ))}
+                </select>
               </div>
             </div>
             <div>
@@ -865,7 +870,7 @@ const EmployeePortal = () => {
                 onChange={(e) => setNewRequest({...newRequest, exchangeReason: e.target.value})}
                 rows={3}
                 className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Please explain why you need to exchange these off days"
+                placeholder="Please explain why you need to exchange this off day"
               />
             </div>
           </div>
