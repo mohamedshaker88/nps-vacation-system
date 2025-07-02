@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Users, Clock, CheckCircle, XCircle, AlertCircle, Plus, Edit, Trash2, User, Mail, Phone, MapPin, FileText, Download, LogOut, Eye, EyeOff, Save, X } from 'lucide-react';
+import { Calendar, Users, Clock, CheckCircle, XCircle, AlertCircle, Plus, Edit, Trash2, User, Mail, Phone, MapPin, FileText, Download, LogOut, Eye, EyeOff, Save, X, RefreshCw } from 'lucide-react';
 import { dataService } from '../services/dataService';
 
 const AdminDashboard = () => {
@@ -151,20 +151,32 @@ const AdminDashboard = () => {
 
   const handleUpdateVacationBalance = async () => {
     if (!editingVacation) return;
-
+    
     try {
-      const updatedEmployee = await dataService.updateEmployeeVacationBalance(
+      setLoading(true);
+      await dataService.updateEmployeeVacationBalance(
         editingVacation.id,
         editingVacation.annual_leave_remaining,
         editingVacation.sick_leave_remaining
       );
+      
+      // Update local state
       setEmployees(employees.map(emp => 
-        emp.id === editingVacation.id ? updatedEmployee : emp
+        emp.id === editingVacation.id 
+          ? { ...emp, 
+              annual_leave_remaining: editingVacation.annual_leave_remaining,
+              sick_leave_remaining: editingVacation.sick_leave_remaining 
+            }
+          : emp
       ));
+      
       setEditingVacation(null);
+      alert('Vacation balance updated successfully!');
     } catch (error) {
       console.error('Error updating vacation balance:', error);
       alert('Error updating vacation balance. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -327,7 +339,9 @@ const AdminDashboard = () => {
       setPolicy(policyDraft);
       setEditingPolicy(false);
       
+      // Refresh employee data to show updated balances
       if (entitlementsChanged) {
+        await loadData(); // Reload employees to show updated balances
         alert('Policy updated successfully! All employee vacation balances have been updated.');
       } else {
         alert('Policy updated successfully!');
@@ -609,6 +623,12 @@ const AdminDashboard = () => {
       {showRequestForm && renderRequestForm()}
 
       <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
+        {loading && (
+          <div className="p-4 text-center text-gray-600">
+            <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2" />
+            Loading requests...
+          </div>
+        )}
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -683,13 +703,23 @@ const AdminDashboard = () => {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-semibold">Registered Employees</h2>
-        <button
-          onClick={() => setShowEmployeeForm(true)}
-          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center gap-2"
-        >
-          <Plus className="h-4 w-4" />
-          Add Employee
-        </button>
+        <div className="flex space-x-2">
+          <button
+            onClick={loadData}
+            className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 flex items-center gap-2"
+            disabled={loading}
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+          <button
+            onClick={() => setShowEmployeeForm(true)}
+            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            Add Employee
+          </button>
+        </div>
       </div>
 
       {showEmployeeForm && (
@@ -784,6 +814,12 @@ const AdminDashboard = () => {
       )}
       
       <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
+        {loading && (
+          <div className="p-4 text-center text-gray-600">
+            <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2" />
+            Loading employees...
+          </div>
+        )}
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -867,25 +903,41 @@ const AdminDashboard = () => {
                       <td className="px-6 py-4 whitespace-nowrap">
                         {editingVacation?.id === employee.id ? (
                           <div className="space-y-1">
-                            <input
-                              type="number"
-                              value={editingVacation.annual_leave_remaining}
-                              onChange={(e) => setEditingVacation({...editingVacation, annual_leave_remaining: parseInt(e.target.value) || 0})}
-                              className="w-16 border border-gray-300 rounded px-2 py-1 text-sm"
-                              min="0"
-                              max="30"
-                            />
-                            <span className="text-xs text-gray-500">/ 15</span>
+                            <div className="flex items-center space-x-2">
+                              <input
+                                type="number"
+                                value={editingVacation.annual_leave_remaining}
+                                onChange={(e) => setEditingVacation({...editingVacation, annual_leave_remaining: parseInt(e.target.value) || 0})}
+                                className="w-16 border border-gray-300 rounded px-2 py-1 text-sm"
+                                min="0"
+                                max="30"
+                              />
+                              <span className="text-xs text-gray-500">/ {policy?.entitlements?.annualLeave || 15}</span>
+                            </div>
+                            <div className="flex space-x-1">
+                              <button
+                                onClick={handleUpdateVacationBalance}
+                                className="text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700"
+                              >
+                                Save
+                              </button>
+                              <button
+                                onClick={() => setEditingVacation(null)}
+                                className="text-xs bg-gray-600 text-white px-2 py-1 rounded hover:bg-gray-700"
+                              >
+                                Cancel
+                              </button>
+                            </div>
                           </div>
                         ) : (
                           <div>
                             <div className="text-sm text-gray-900">
-                              {annualRemaining} / 15 remaining
+                              {annualRemaining} / {policy?.entitlements?.annualLeave || 15} remaining
                             </div>
                             <div className="w-24 bg-gray-200 rounded-full h-2">
                               <div 
                                 className="bg-blue-600 h-2 rounded-full" 
-                                style={{width: `${((15 - annualRemaining) / 15) * 100}%`}}
+                                style={{width: `${((policy?.entitlements?.annualLeave || 15) - annualRemaining) / (policy?.entitlements?.annualLeave || 15) * 100}%`}}
                               ></div>
                             </div>
                           </div>
@@ -894,25 +946,27 @@ const AdminDashboard = () => {
                       <td className="px-6 py-4 whitespace-nowrap">
                         {editingVacation?.id === employee.id ? (
                           <div className="space-y-1">
-                            <input
-                              type="number"
-                              value={editingVacation.sick_leave_remaining}
-                              onChange={(e) => setEditingVacation({...editingVacation, sick_leave_remaining: parseInt(e.target.value) || 0})}
-                              className="w-16 border border-gray-300 rounded px-2 py-1 text-sm"
-                              min="0"
-                              max="15"
-                            />
-                            <span className="text-xs text-gray-500">/ 10</span>
+                            <div className="flex items-center space-x-2">
+                              <input
+                                type="number"
+                                value={editingVacation.sick_leave_remaining}
+                                onChange={(e) => setEditingVacation({...editingVacation, sick_leave_remaining: parseInt(e.target.value) || 0})}
+                                className="w-16 border border-gray-300 rounded px-2 py-1 text-sm"
+                                min="0"
+                                max="30"
+                              />
+                              <span className="text-xs text-gray-500">/ {policy?.entitlements?.sickLeave || 10}</span>
+                            </div>
                           </div>
                         ) : (
                           <div>
                             <div className="text-sm text-gray-900">
-                              {sickRemaining} / 10 remaining
+                              {sickRemaining} / {policy?.entitlements?.sickLeave || 10} remaining
                             </div>
                             <div className="w-24 bg-gray-200 rounded-full h-2">
                               <div 
                                 className="bg-green-600 h-2 rounded-full" 
-                                style={{width: `${((10 - sickRemaining) / 10) * 100}%`}}
+                                style={{width: `${((policy?.entitlements?.sickLeave || 10) - sickRemaining) / (policy?.entitlements?.sickLeave || 10) * 100}%`}}
                               ></div>
                             </div>
                           </div>
