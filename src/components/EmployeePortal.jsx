@@ -324,6 +324,10 @@ const EmployeePortal = () => {
     }
   };
 
+  // Use individual employee entitlements if available, otherwise fall back to policy defaults
+  const annualLeaveEntitlement = currentEmployee?.annual_leave_total || policy?.entitlements?.annualLeave || 15;
+  const sickLeaveEntitlement = currentEmployee?.sick_leave_total || policy?.entitlements?.sickLeave || 10;
+
   // Calculate leave balances using dynamic policy
   // Use individual employee remaining balances if available, otherwise calculate from requests
   const usedAnnual = myRequests.filter(r => 
@@ -342,10 +346,6 @@ const EmployeePortal = () => {
   const sickRemaining = currentEmployee?.sick_leave_remaining !== undefined 
     ? currentEmployee.sick_leave_remaining 
     : (sickLeaveEntitlement - usedSick);
-
-  // Use individual employee entitlements if available, otherwise fall back to policy defaults
-  const annualLeaveEntitlement = currentEmployee?.annual_leave_total || policy?.entitlements?.annualLeave || 15;
-  const sickLeaveEntitlement = currentEmployee?.sick_leave_total || policy?.entitlements?.sickLeave || 10;
   const dynamicLeaveTypes = policy?.leaveTypes || leaveTypes; // Fallback to hardcoded if no policy
 
   // Authentication forms
