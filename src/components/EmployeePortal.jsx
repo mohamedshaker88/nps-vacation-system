@@ -34,7 +34,8 @@ const EmployeePortal = () => {
     medicalCertificate: false,
     exchangeDate: '',
     exchangePartnerId: '',
-    exchangeReason: ''
+    exchangeReason: '',
+    partnerDesiredOffDate: ''
   });
 
   const [availableCoverage, setAvailableCoverage] = useState([]);
@@ -378,9 +379,20 @@ const EmployeePortal = () => {
         return;
       }
 
+      if (!newRequest.partnerDesiredOffDate) {
+        alert('Please select the date your exchange partner wants off');
+        return;
+      }
+
       // Validate that exchange is exactly 1 day
       if (days !== 1) {
         alert('Exchange Off Days requests must be exactly 1 day');
+        return;
+      }
+
+      // Validate that the two dates are different
+      if (newRequest.startDate === newRequest.partnerDesiredOffDate) {
+        alert('You cannot exchange the same date. Please select different dates for you and your partner.');
         return;
       }
 
@@ -433,6 +445,7 @@ const EmployeePortal = () => {
       exchange_to_date: newRequest.endDate, // Use end date for all types
       exchange_reason: newRequest.exchangeReason || newRequest.reason, // Use exchange reason or fallback to main reason
       exchange_partner_id: parseInt(newRequest.exchangePartnerId),
+      partner_desired_off_date: newRequest.partnerDesiredOffDate, // NEW: Partner's desired off day
       requires_partner_approval: true // All requests now require partner approval
     };
 
@@ -456,7 +469,8 @@ const EmployeePortal = () => {
         medicalCertificate: false,
         exchangeDate: '',
         exchangePartnerId: '',
-        exchangeReason: ''
+        exchangeReason: '',
+        partnerDesiredOffDate: ''
       });
       setShowRequestForm(false);
       alert('Leave request submitted successfully!');
@@ -943,16 +957,51 @@ const EmployeePortal = () => {
 
         {/* Exchange-specific fields for Exchange Off Days */}
         {newRequest.type === 'Exchange Off Days' && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Exchange Reason *</label>
-            <textarea
-              value={newRequest.exchangeReason}
-              onChange={(e) => setNewRequest({...newRequest, exchangeReason: e.target.value})}
-              rows={3}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Please explain why you need to exchange this off day"
-            />
-          </div>
+          <>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                When does your exchange partner want off? *
+              </label>
+              <input
+                type="date"
+                value={newRequest.partnerDesiredOffDate || ''}
+                onChange={(e) => setNewRequest({...newRequest, partnerDesiredOffDate: e.target.value})}
+                min={new Date().toISOString().split('T')[0]}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Select the date your partner wants off"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                This is the date you'll work to cover for your exchange partner
+              </p>
+            </div>
+            
+            <div className="bg-blue-50 p-4 rounded-md">
+              <h4 className="font-medium text-blue-800 mb-2">📅 Exchange Summary</h4>
+              {newRequest.startDate && newRequest.partnerDesiredOffDate ? (
+                <div className="text-sm text-blue-700 space-y-1">
+                  <div>• <strong>You get off:</strong> {newRequest.startDate}</div>
+                  <div>• <strong>Partner gets off:</strong> {newRequest.partnerDesiredOffDate}</div>
+                  <div>• <strong>You cover partner's shift:</strong> {newRequest.partnerDesiredOffDate}</div>
+                  <div>• <strong>Partner covers your shift:</strong> {newRequest.startDate}</div>
+                </div>
+              ) : (
+                <div className="text-sm text-blue-600">
+                  Fill in both dates to see the exchange summary
+                </div>
+              )}
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Exchange Reason *</label>
+              <textarea
+                value={newRequest.exchangeReason}
+                onChange={(e) => setNewRequest({...newRequest, exchangeReason: e.target.value})}
+                rows={3}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Please explain why you need to exchange these off days"
+              />
+            </div>
+          </>
         )}
 
         {/* Show available coverage for exchange requests */}
@@ -1097,12 +1146,17 @@ const EmployeePortal = () => {
                       {request.coverage_by || 'Not arranged'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {request.type === 'Exchange Off Days' && request.exchange_from_date ? (
+                      {request.type === 'Exchange Off Days' && request.exchange_to_date ? (
                         <div>
-                          <div className="text-xs text-gray-500">From: {request.exchange_from_date}</div>
-                          <div className="text-xs text-gray-500">To: {request.exchange_to_date}</div>
+                          <div className="text-xs font-medium text-blue-700">You get off: {request.exchange_to_date}</div>
+                          {request.partner_desired_off_date && (
+                            <div className="text-xs font-medium text-green-700">Partner gets off: {request.partner_desired_off_date}</div>
+                          )}
                           {request.exchange_reason && (
                             <div className="text-xs text-gray-600 mt-1">{request.exchange_reason}</div>
+                          )}
+                          {!request.partner_desired_off_date && (
+                            <div className="text-xs text-red-600 mt-1">⚠️ Missing partner's desired off date</div>
                           )}
                         </div>
                       ) : (
