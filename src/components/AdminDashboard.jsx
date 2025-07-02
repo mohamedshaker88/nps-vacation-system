@@ -829,7 +829,10 @@ const AdminDashboard = () => {
                   <input
                     type="number"
                     value={newEmployee.annual_leave_remaining}
-                    onChange={(e) => setNewEmployee({...newEmployee, annual_leave_remaining: parseInt(e.target.value) || 15})}
+                    onChange={(e) => {
+                      const value = e.target.value === '' ? 15 : parseInt(e.target.value) || 15;
+                      setNewEmployee({...newEmployee, annual_leave_remaining: value});
+                    }}
                     className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     min="0"
                     max="30"
@@ -902,8 +905,13 @@ const AdminDashboard = () => {
                       r.status === 'Approved'
                     ).reduce((sum, r) => sum + r.days, 0);
 
-                    const annualRemaining = employee.annual_leave_remaining || (15 - usedAnnual);
-                    const sickRemaining = employee.sick_leave_remaining || (10 - usedSick);
+                    // Use explicit remaining values if they exist, otherwise calculate from total
+                    const annualRemaining = employee.annual_leave_remaining !== null && employee.annual_leave_remaining !== undefined 
+                      ? employee.annual_leave_remaining 
+                      : (employee.annual_leave_total || 15) - usedAnnual;
+                    const sickRemaining = employee.sick_leave_remaining !== null && employee.sick_leave_remaining !== undefined 
+                      ? employee.sick_leave_remaining 
+                      : (employee.sick_leave_total || 10) - usedSick;
 
                     return (
                       <tr key={employee.id} className="hover:bg-gray-50">
@@ -958,7 +966,10 @@ const AdminDashboard = () => {
                                   <input
                                     type="number"
                                     value={editingVacation.annual_leave_remaining}
-                                    onChange={(e) => setEditingVacation({...editingVacation, annual_leave_remaining: parseInt(e.target.value) || 0})}
+                                    onChange={(e) => {
+                                      const value = e.target.value === '' ? 0 : parseInt(e.target.value) || 0;
+                                      setEditingVacation({...editingVacation, annual_leave_remaining: value});
+                                    }}
                                     className="w-16 border border-gray-300 rounded px-2 py-1 text-xs"
                                     min="0"
                                     max="30"
@@ -969,7 +980,10 @@ const AdminDashboard = () => {
                                   <input
                                     type="number"
                                     value={editingVacation.annual_leave_total || (policy?.entitlements?.annualLeave || 15)}
-                                    onChange={(e) => setEditingVacation({...editingVacation, annual_leave_total: parseInt(e.target.value) || 15})}
+                                    onChange={(e) => {
+                                      const value = e.target.value === '' ? 15 : parseInt(e.target.value) || 15;
+                                      setEditingVacation({...editingVacation, annual_leave_total: value});
+                                    }}
                                     className="w-16 border border-gray-300 rounded px-2 py-1 text-xs"
                                     min="0"
                                     max="30"
@@ -1001,7 +1015,10 @@ const AdminDashboard = () => {
                                   <input
                                     type="number"
                                     value={editingVacation.sick_leave_remaining}
-                                    onChange={(e) => setEditingVacation({...editingVacation, sick_leave_remaining: parseInt(e.target.value) || 0})}
+                                    onChange={(e) => {
+                                      const value = e.target.value === '' ? 0 : parseInt(e.target.value) || 0;
+                                      setEditingVacation({...editingVacation, sick_leave_remaining: value});
+                                    }}
                                     className="w-16 border border-gray-300 rounded px-2 py-1 text-xs"
                                     min="0"
                                     max="30"
@@ -1012,7 +1029,10 @@ const AdminDashboard = () => {
                                   <input
                                     type="number"
                                     value={editingVacation.sick_leave_total || (policy?.entitlements?.sickLeave || 10)}
-                                    onChange={(e) => setEditingVacation({...editingVacation, sick_leave_total: parseInt(e.target.value) || 10})}
+                                    onChange={(e) => {
+                                      const value = e.target.value === '' ? 10 : parseInt(e.target.value) || 10;
+                                      setEditingVacation({...editingVacation, sick_leave_total: value});
+                                    }}
                                     className="w-16 border border-gray-300 rounded px-2 py-1 text-xs"
                                     min="0"
                                     max="30"
