@@ -395,17 +395,15 @@ const AdminDashboard = () => {
       const request = requests.find(req => req.id === id);
       
       // Check if request requires partner approval and hasn't been approved yet
-      if (request && request.requires_partner_approval && request.exchange_partner_id && status === 'Approved') {
+      if (request && request.exchange_partner_id && status === 'Approved') {
         // Check if partner has approved
-        const partnerApprovals = await dataService.getPendingExchangeApprovals(request.exchange_partner_id);
-        const thisRequestApproval = partnerApprovals.find(approval => approval.request_id === id);
-        
-        if (!thisRequestApproval || thisRequestApproval.status === 'pending') {
+        if (!request.exchange_partner_approved) {
           alert('This request requires partner approval before it can be approved. The exchange partner must approve the request first.');
           return;
         }
         
-        if (thisRequestApproval.status === 'rejected') {
+        // Check if partner has rejected
+        if (request.exchange_partner_approved === false && request.exchange_partner_approved_at) {
           alert('This request was rejected by the exchange partner and cannot be approved.');
           return;
         }
@@ -944,6 +942,17 @@ const AdminDashboard = () => {
                           <div className="text-xs text-gray-500">To: {request.exchange_to_date}</div>
                           {request.exchange_reason && (
                             <div className="text-xs text-gray-600 mt-1">{request.exchange_reason}</div>
+                          )}
+                          {request.exchange_partner_id && (
+                            <div className="text-xs mt-1">
+                              {request.exchange_partner_approved === true ? (
+                                <span className="text-green-600">✓ Partner Approved</span>
+                              ) : request.exchange_partner_approved === false && request.exchange_partner_approved_at ? (
+                                <span className="text-red-600">✗ Partner Rejected</span>
+                              ) : (
+                                <span className="text-yellow-600">⏳ Waiting for Partner</span>
+                              )}
+                            </div>
                           )}
                         </div>
                       ) : (

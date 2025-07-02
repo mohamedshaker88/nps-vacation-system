@@ -496,5 +496,13 @@ export const dataService = {
     
     if (error) throw error
     return count || 0
+  },
+
+  async canAdminApproveRequest(requestId) {
+    const { data, error } = await supabase
+      .rpc('can_admin_approve_request', { p_request_id: requestId })
+    
+    if (error) throw error
+    return data[0] || { can_approve: false, reason: 'Error checking approval status' }
   }
 } 
