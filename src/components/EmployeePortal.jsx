@@ -437,16 +437,16 @@ const EmployeePortal = () => {
       reason: newRequest.reason,
       status: 'Pending',
       submit_date: new Date().toISOString().split('T')[0],
-      coverage_by: newRequest.coverageBy,
-      emergency_contact: newRequest.emergencyContact,
-      additional_notes: newRequest.additionalNotes,
-      medical_certificate: newRequest.medicalCertificate,
-      exchange_from_date: newRequest.startDate, // Use start date for all types
-      exchange_to_date: newRequest.endDate, // Use end date for all types
-      exchange_reason: newRequest.exchangeReason || newRequest.reason, // Use exchange reason or fallback to main reason
-      exchange_partner_id: parseInt(newRequest.exchangePartnerId),
-      partner_desired_off_date: newRequest.partnerDesiredOffDate, // NEW: Partner's desired off day
-      requires_partner_approval: true // All requests now require partner approval
+      coverage_by: newRequest.coverageBy || null,
+      emergency_contact: newRequest.emergencyContact || null,
+      additional_notes: newRequest.additionalNotes || null,
+      medical_certificate: newRequest.medicalCertificate || false,
+      exchange_from_date: newRequest.startDate,
+      exchange_to_date: newRequest.endDate,
+      exchange_reason: newRequest.exchangeReason || newRequest.reason,
+      exchange_partner_id: newRequest.exchangePartnerId ? parseInt(newRequest.exchangePartnerId) : null,
+      partner_desired_off_date: newRequest.partnerDesiredOffDate || null,
+      requires_partner_approval: newRequest.exchangePartnerId ? true : false
     };
 
     try {

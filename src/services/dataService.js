@@ -106,27 +106,25 @@ export const dataService = {
         end_date: request.end_date,
         reason: request.reason,
         status: request.status || 'Pending',
-        days: request.days
+        days: request.days,
+        submit_date: request.submit_date || new Date().toISOString().split('T')[0]
       }
       
-      // Add optional fields only if they have values
+      // Add optional fields only if they have values (not null/undefined/empty)
       if (request.employee_id) essentialData.employee_id = request.employee_id
-      if (request.exchange_partner_id) essentialData.exchange_partner_id = request.exchange_partner_id
+      if (request.exchange_partner_id && request.exchange_partner_id !== null) essentialData.exchange_partner_id = request.exchange_partner_id
       if (request.exchange_from_date) essentialData.exchange_from_date = request.exchange_from_date
       if (request.exchange_to_date) essentialData.exchange_to_date = request.exchange_to_date
       if (request.exchange_reason) essentialData.exchange_reason = request.exchange_reason
       if (request.partner_desired_off_date) essentialData.partner_desired_off_date = request.partner_desired_off_date
-      if (request.coverage_by) essentialData.coverage_by = request.coverage_by
-      if (request.emergency_contact) essentialData.emergency_contact = request.emergency_contact
-      if (request.additional_notes) essentialData.additional_notes = request.additional_notes
+      if (request.coverage_by && request.coverage_by.trim() !== '') essentialData.coverage_by = request.coverage_by
+      if (request.emergency_contact && request.emergency_contact.trim() !== '') essentialData.emergency_contact = request.emergency_contact
+      if (request.additional_notes && request.additional_notes.trim() !== '') essentialData.additional_notes = request.additional_notes
       
       // Boolean fields (set to false if not provided)
       essentialData.coverage_arranged = request.coverage_arranged || false
       essentialData.medical_certificate = request.medical_certificate || false
       essentialData.requires_partner_approval = request.requires_partner_approval || false
-      
-      // Date fields
-      essentialData.submit_date = request.submit_date || new Date().toISOString().split('T')[0]
       
       console.log('Final request data:', essentialData)
       
