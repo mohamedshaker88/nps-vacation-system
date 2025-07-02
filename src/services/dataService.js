@@ -130,14 +130,61 @@ export const dataService = {
   },
 
   async updateRequestStatus(requestId, status) {
-    const { data, error } = await supabase
-      .from('requests')
-      .update({ status })
-      .eq('id', requestId)
-      .select()
+    console.log('Updating request status:', { requestId, status, type: typeof requestId })
     
-    if (error) throw error
-    return data[0]
+    // Ensure requestId is a number
+    const numericRequestId = parseInt(requestId)
+    if (isNaN(numericRequestId)) {
+      throw new Error(`Invalid request ID: ${requestId}`)
+    }
+    
+    try {
+      // Use the safe approval function for admin approvals
+      if (status === 'Approved') {
+        const { data, error } = await supabase
+          .rpc('admin_approve_request_safe', { 
+            p_request_id: numericRequestId, 
+            p_new_status: status 
+          })
+        
+        if (error) {
+          console.error('RPC Error:', error)
+          throw error
+        }
+        
+        console.log('Safe approval result:', data)
+        
+        if (!data.success) {
+          throw new Error(data.error || 'Approval failed')
+        }
+        
+        // Return the request data in the expected format
+        const { data: requestData, error: fetchError } = await supabase
+          .from('requests')
+          .select('*')
+          .eq('id', numericRequestId)
+          .single()
+        
+        if (fetchError) throw fetchError
+        return requestData
+      } else {
+        // For non-approval status updates, use direct update
+        const { data, error } = await supabase
+          .from('requests')
+          .update({ status })
+          .eq('id', numericRequestId)
+          .select()
+        
+        if (error) {
+          console.error('Direct update error:', error)
+          throw error
+        }
+        return data[0]
+      }
+    } catch (error) {
+      console.error('updateRequestStatus error:', error)
+      throw error
+    }
   },
 
   // Authentication
