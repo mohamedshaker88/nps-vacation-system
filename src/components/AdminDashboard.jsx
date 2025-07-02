@@ -9,6 +9,7 @@ const AdminDashboard = () => {
   const [loginError, setLoginError] = useState('');
   const [activeTab, setActiveTab] = useState('dashboard');
   const [loading, setLoading] = useState(false);
+  const [hasError, setHasError] = useState(false);
 
   // Load employees and requests from Supabase
   const [employees, setEmployees] = useState([]);
@@ -42,23 +43,34 @@ const AdminDashboard = () => {
   });
 
   // Load data from Supabase
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        setLoading(true);
-        const [employeesData, requestsData] = await Promise.all([
-          dataService.getEmployees(),
-          dataService.getRequests()
-        ]);
-        setEmployees(employeesData);
-        setRequests(requestsData);
-      } catch (error) {
-        console.error('Error loading data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setHasError(false);
+      console.log('Loading admin data...');
+      
+      const [employeesData, requestsData] = await Promise.all([
+        dataService.getEmployees(),
+        dataService.getRequests()
+      ]);
+      
+      console.log('Employees data:', employeesData);
+      console.log('Requests data:', requestsData);
+      
+      setEmployees(employeesData || []);
+      setRequests(requestsData || []);
+    } catch (error) {
+      console.error('Error loading admin data:', error);
+      setHasError(true);
+      // Set empty arrays to prevent white page
+      setEmployees([]);
+      setRequests([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     if (isAuthenticated) {
       loadData();
     }
@@ -415,6 +427,24 @@ const AdminDashboard = () => {
     );
   }
 
+  // Error boundary
+  if (hasError) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Something went wrong</h1>
+          <p className="text-gray-600 mb-4">Please refresh the page or try again later.</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+          >
+            Refresh Page
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const renderDashboard = () => (
     <div className="space-y-6">
       {loading && (
@@ -699,353 +729,373 @@ const AdminDashboard = () => {
     </div>
   );
 
-  const renderEmployees = () => (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">Registered Employees</h2>
-        <div className="flex space-x-2">
-          <button
-            onClick={loadData}
-            className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 flex items-center gap-2"
-            disabled={loading}
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
-          </button>
-          <button
-            onClick={() => setShowEmployeeForm(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center gap-2"
-          >
-            <Plus className="h-4 w-4" />
-            Add Employee
-          </button>
+  const renderEmployees = () => {
+    // Add error handling
+    if (!employees) {
+      return (
+        <div className="space-y-4">
+          <h2 className="text-xl font-semibold">Registered Employees</h2>
+          <div className="bg-white rounded-lg shadow-sm border p-6">
+            <p className="text-gray-500 text-center">Loading employees...</p>
+          </div>
         </div>
-      </div>
+      );
+    }
 
-      {showEmployeeForm && (
-        <div className="bg-white rounded-lg shadow-sm border">
-          <div className="p-4 border-b flex items-center justify-between">
-            <h3 className="text-lg font-semibold">Add New Employee</h3>
+    return (
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <h2 className="text-xl font-semibold">Registered Employees</h2>
+          <div className="flex space-x-2">
             <button
-              onClick={() => setShowEmployeeForm(false)}
-              className="text-gray-500 hover:text-gray-700"
+              onClick={loadData}
+              className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 flex items-center gap-2"
+              disabled={loading}
             >
-              <X className="h-5 w-5" />
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+            <button
+              onClick={() => setShowEmployeeForm(true)}
+              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              Add Employee
             </button>
           </div>
-          
-          <div className="p-6 space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
-                <input
-                  type="text"
-                  value={newEmployee.name}
-                  onChange={(e) => setNewEmployee({...newEmployee, name: e.target.value})}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter full name"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
-                <input
-                  type="email"
-                  value={newEmployee.email}
-                  onChange={(e) => setNewEmployee({...newEmployee, email: e.target.value})}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter email address"
-                />
-              </div>
-            </div>
+        </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                <input
-                  type="tel"
-                  value={newEmployee.phone}
-                  onChange={(e) => setNewEmployee({...newEmployee, phone: e.target.value})}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter phone number"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Password *</label>
-                <input
-                  type="password"
-                  value={newEmployee.password}
-                  onChange={(e) => setNewEmployee({...newEmployee, password: e.target.value})}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter password"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Annual Leave Remaining</label>
-                <input
-                  type="number"
-                  value={newEmployee.annual_leave_remaining}
-                  onChange={(e) => setNewEmployee({...newEmployee, annual_leave_remaining: parseInt(e.target.value) || 15})}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  min="0"
-                  max="30"
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-end space-x-3 pt-4">
+        {showEmployeeForm && (
+          <div className="bg-white rounded-lg shadow-sm border">
+            <div className="p-4 border-b flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Add New Employee</h3>
               <button
                 onClick={() => setShowEmployeeForm(false)}
-                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                className="text-gray-500 hover:text-gray-700"
               >
-                Cancel
-              </button>
-              <button
-                onClick={handleCreateEmployee}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-              >
-                Create Employee
+                <X className="h-5 w-5" />
               </button>
             </div>
-          </div>
-        </div>
-      )}
-      
-      <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
-        {loading && (
-          <div className="p-4 text-center text-gray-600">
-            <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2" />
-            Loading employees...
+            
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+                  <input
+                    type="text"
+                    value={newEmployee.name}
+                    onChange={(e) => setNewEmployee({...newEmployee, name: e.target.value})}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter full name"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+                  <input
+                    type="email"
+                    value={newEmployee.email}
+                    onChange={(e) => setNewEmployee({...newEmployee, email: e.target.value})}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter email address"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                  <input
+                    type="tel"
+                    value={newEmployee.phone}
+                    onChange={(e) => setNewEmployee({...newEmployee, phone: e.target.value})}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter phone number"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Password *</label>
+                  <input
+                    type="password"
+                    value={newEmployee.password}
+                    onChange={(e) => setNewEmployee({...newEmployee, password: e.target.value})}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter password"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Annual Leave Remaining</label>
+                  <input
+                    type="number"
+                    value={newEmployee.annual_leave_remaining}
+                    onChange={(e) => setNewEmployee({...newEmployee, annual_leave_remaining: parseInt(e.target.value) || 15})}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    min="0"
+                    max="30"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-4">
+                <button
+                  onClick={() => setShowEmployeeForm(false)}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreateEmployee}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                >
+                  Create Employee
+                </button>
+              </div>
+            </div>
           </div>
         )}
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Annual Leave</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sick Leave</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joined</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {employees.length === 0 ? (
+        
+        <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
+          {loading && (
+            <div className="p-4 text-center text-gray-600">
+              <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2" />
+              Loading employees...
+            </div>
+          )}
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
                 <tr>
-                  <td colSpan="7" className="px-6 py-4 text-center text-gray-500">
-                    No employees registered yet
-                  </td>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Annual Leave</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sick Leave</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joined</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
-              ) : (
-                employees.map((employee) => {
-                  const usedAnnual = requests.filter(r => 
-                    r.employee_email === employee.email && 
-                    r.type === 'Annual Leave' && 
-                    r.status === 'Approved'
-                  ).reduce((sum, r) => sum + r.days, 0);
-                  
-                  const usedSick = requests.filter(r => 
-                    r.employee_email === employee.email && 
-                    r.type === 'Sick Leave' && 
-                    r.status === 'Approved'
-                  ).reduce((sum, r) => sum + r.days, 0);
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {employees.length === 0 ? (
+                  <tr>
+                    <td colSpan="7" className="px-6 py-4 text-center text-gray-500">
+                      No employees registered yet
+                    </td>
+                  </tr>
+                ) : (
+                  employees.map((employee) => {
+                    // Add error handling for malformed employee data
+                    if (!employee || !employee.id) {
+                      console.warn('Invalid employee data:', employee);
+                      return null;
+                    }
 
-                  const annualRemaining = employee.annual_leave_remaining || (15 - usedAnnual);
-                  const sickRemaining = employee.sick_leave_remaining || (10 - usedSick);
+                    const usedAnnual = requests.filter(r => 
+                      r.employee_email === employee.email && 
+                      r.type === 'Annual Leave' && 
+                      r.status === 'Approved'
+                    ).reduce((sum, r) => sum + r.days, 0);
+                    
+                    const usedSick = requests.filter(r => 
+                      r.employee_email === employee.email && 
+                      r.type === 'Sick Leave' && 
+                      r.status === 'Approved'
+                    ).reduce((sum, r) => sum + r.days, 0);
 
-                  return (
-                    <tr key={employee.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <User className="h-5 w-5 text-gray-400 mr-2" />
-                          <div className="text-sm font-medium text-gray-900">
-                            {editingEmployee?.id === employee.id ? (
-                              <input
-                                type="text"
-                                value={editingEmployee.name}
-                                onChange={(e) => setEditingEmployee({...editingEmployee, name: e.target.value})}
-                                className="border border-gray-300 rounded px-2 py-1 text-sm"
-                              />
-                            ) : (
-                              employee.name
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {editingEmployee?.id === employee.id ? (
-                          <input
-                            type="email"
-                            value={editingEmployee.email}
-                            onChange={(e) => setEditingEmployee({...editingEmployee, email: e.target.value})}
-                            className="border border-gray-300 rounded px-2 py-1 text-sm"
-                          />
-                        ) : (
-                          employee.email
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {editingEmployee?.id === employee.id ? (
-                          <input
-                            type="tel"
-                            value={editingEmployee.phone}
-                            onChange={(e) => setEditingEmployee({...editingEmployee, phone: e.target.value})}
-                            className="border border-gray-300 rounded px-2 py-1 text-sm"
-                          />
-                        ) : (
-                          employee.phone
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {editingVacation?.id === employee.id ? (
-                          <div className="space-y-1">
-                            <div className="flex items-center space-x-2">
-                              <input
-                                type="number"
-                                value={editingVacation.annual_leave_remaining}
-                                onChange={(e) => setEditingVacation({...editingVacation, annual_leave_remaining: parseInt(e.target.value) || 0})}
-                                className="w-16 border border-gray-300 rounded px-2 py-1 text-sm"
-                                min="0"
-                                max="30"
-                              />
-                              <span className="text-xs text-gray-500">/ {policy?.entitlements?.annualLeave || 15}</span>
+                    const annualRemaining = employee.annual_leave_remaining || (15 - usedAnnual);
+                    const sickRemaining = employee.sick_leave_remaining || (10 - usedSick);
+
+                    return (
+                      <tr key={employee.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <User className="h-5 w-5 text-gray-400 mr-2" />
+                            <div className="text-sm font-medium text-gray-900">
+                              {editingEmployee?.id === employee.id ? (
+                                <input
+                                  type="text"
+                                  value={editingEmployee.name}
+                                  onChange={(e) => setEditingEmployee({...editingEmployee, name: e.target.value})}
+                                  className="border border-gray-300 rounded px-2 py-1 text-sm"
+                                />
+                              ) : (
+                                employee.name
+                              )}
                             </div>
-                            <div className="flex space-x-1">
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {editingEmployee?.id === employee.id ? (
+                            <input
+                              type="email"
+                              value={editingEmployee.email}
+                              onChange={(e) => setEditingEmployee({...editingEmployee, email: e.target.value})}
+                              className="border border-gray-300 rounded px-2 py-1 text-sm"
+                            />
+                          ) : (
+                            employee.email
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {editingEmployee?.id === employee.id ? (
+                            <input
+                              type="tel"
+                              value={editingEmployee.phone}
+                              onChange={(e) => setEditingEmployee({...editingEmployee, phone: e.target.value})}
+                              className="border border-gray-300 rounded px-2 py-1 text-sm"
+                            />
+                          ) : (
+                            employee.phone
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {editingVacation?.id === employee.id ? (
+                            <div className="space-y-1">
+                              <div className="flex items-center space-x-2">
+                                <input
+                                  type="number"
+                                  value={editingVacation.annual_leave_remaining}
+                                  onChange={(e) => setEditingVacation({...editingVacation, annual_leave_remaining: parseInt(e.target.value) || 0})}
+                                  className="w-16 border border-gray-300 rounded px-2 py-1 text-sm"
+                                  min="0"
+                                  max="30"
+                                />
+                                <span className="text-xs text-gray-500">/ {policy?.entitlements?.annualLeave || 15}</span>
+                              </div>
+                              <div className="flex space-x-1">
+                                <button
+                                  onClick={handleUpdateVacationBalance}
+                                  className="text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700"
+                                >
+                                  Save
+                                </button>
+                                <button
+                                  onClick={() => setEditingVacation(null)}
+                                  className="text-xs bg-gray-600 text-white px-2 py-1 rounded hover:bg-gray-700"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div>
+                              <div className="text-sm text-gray-900">
+                                {annualRemaining} / {policy?.entitlements?.annualLeave || 15} remaining
+                              </div>
+                              <div className="w-24 bg-gray-200 rounded-full h-2">
+                                <div 
+                                  className="bg-blue-600 h-2 rounded-full" 
+                                  style={{width: `${((policy?.entitlements?.annualLeave || 15) - annualRemaining) / (policy?.entitlements?.annualLeave || 15) * 100}%`}}
+                                ></div>
+                              </div>
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {editingVacation?.id === employee.id ? (
+                            <div className="space-y-1">
+                              <div className="flex items-center space-x-2">
+                                <input
+                                  type="number"
+                                  value={editingVacation.sick_leave_remaining}
+                                  onChange={(e) => setEditingVacation({...editingVacation, sick_leave_remaining: parseInt(e.target.value) || 0})}
+                                  className="w-16 border border-gray-300 rounded px-2 py-1 text-sm"
+                                  min="0"
+                                  max="30"
+                                />
+                                <span className="text-xs text-gray-500">/ {policy?.entitlements?.sickLeave || 10}</span>
+                              </div>
+                            </div>
+                          ) : (
+                            <div>
+                              <div className="text-sm text-gray-900">
+                                {sickRemaining} / {policy?.entitlements?.sickLeave || 10} remaining
+                              </div>
+                              <div className="w-24 bg-gray-200 rounded-full h-2">
+                                <div 
+                                  className="bg-green-600 h-2 rounded-full" 
+                                  style={{width: `${((policy?.entitlements?.sickLeave || 10) - sickRemaining) / (policy?.entitlements?.sickLeave || 10) * 100}%`}}
+                                ></div>
+                              </div>
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {new Date(employee.created_at).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                          {editingEmployee?.id === employee.id ? (
+                            <>
+                              <button
+                                onClick={handleEditEmployee}
+                                className="text-green-600 hover:text-green-900"
+                                title="Save changes"
+                              >
+                                <Save className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => setEditingEmployee(null)}
+                                className="text-gray-600 hover:text-gray-900"
+                                title="Cancel edit"
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
+                            </>
+                          ) : editingVacation?.id === employee.id ? (
+                            <>
                               <button
                                 onClick={handleUpdateVacationBalance}
-                                className="text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700"
+                                className="text-green-600 hover:text-green-900"
+                                title="Save vacation balance"
                               >
-                                Save
+                                <Save className="h-4 w-4" />
                               </button>
                               <button
                                 onClick={() => setEditingVacation(null)}
-                                className="text-xs bg-gray-600 text-white px-2 py-1 rounded hover:bg-gray-700"
+                                className="text-gray-600 hover:text-gray-900"
+                                title="Cancel edit"
                               >
-                                Cancel
+                                <X className="h-4 w-4" />
                               </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div>
-                            <div className="text-sm text-gray-900">
-                              {annualRemaining} / {policy?.entitlements?.annualLeave || 15} remaining
-                            </div>
-                            <div className="w-24 bg-gray-200 rounded-full h-2">
-                              <div 
-                                className="bg-blue-600 h-2 rounded-full" 
-                                style={{width: `${((policy?.entitlements?.annualLeave || 15) - annualRemaining) / (policy?.entitlements?.annualLeave || 15) * 100}%`}}
-                              ></div>
-                            </div>
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {editingVacation?.id === employee.id ? (
-                          <div className="space-y-1">
-                            <div className="flex items-center space-x-2">
-                              <input
-                                type="number"
-                                value={editingVacation.sick_leave_remaining}
-                                onChange={(e) => setEditingVacation({...editingVacation, sick_leave_remaining: parseInt(e.target.value) || 0})}
-                                className="w-16 border border-gray-300 rounded px-2 py-1 text-sm"
-                                min="0"
-                                max="30"
-                              />
-                              <span className="text-xs text-gray-500">/ {policy?.entitlements?.sickLeave || 10}</span>
-                            </div>
-                          </div>
-                        ) : (
-                          <div>
-                            <div className="text-sm text-gray-900">
-                              {sickRemaining} / {policy?.entitlements?.sickLeave || 10} remaining
-                            </div>
-                            <div className="w-24 bg-gray-200 rounded-full h-2">
-                              <div 
-                                className="bg-green-600 h-2 rounded-full" 
-                                style={{width: `${((policy?.entitlements?.sickLeave || 10) - sickRemaining) / (policy?.entitlements?.sickLeave || 10) * 100}%`}}
-                              ></div>
-                            </div>
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(employee.created_at).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                        {editingEmployee?.id === employee.id ? (
-                          <>
-                            <button
-                              onClick={handleEditEmployee}
-                              className="text-green-600 hover:text-green-900"
-                              title="Save changes"
-                            >
-                              <Save className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => setEditingEmployee(null)}
-                              className="text-gray-600 hover:text-gray-900"
-                              title="Cancel edit"
-                            >
-                              <X className="h-4 w-4" />
-                            </button>
-                          </>
-                        ) : editingVacation?.id === employee.id ? (
-                          <>
-                            <button
-                              onClick={handleUpdateVacationBalance}
-                              className="text-green-600 hover:text-green-900"
-                              title="Save vacation balance"
-                            >
-                              <Save className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => setEditingVacation(null)}
-                              className="text-gray-600 hover:text-gray-900"
-                              title="Cancel edit"
-                            >
-                              <X className="h-4 w-4" />
-                            </button>
-                          </>
-                        ) : (
-                          <>
-                            <button
-                              onClick={() => setEditingEmployee(employee)}
-                              className="text-blue-600 hover:text-blue-900"
-                              title="Edit employee"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => setEditingVacation(employee)}
-                              className="text-purple-600 hover:text-purple-900"
-                              title="Edit vacation balance"
-                            >
-                              <Calendar className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteEmployee(employee.id)}
-                              className="text-red-600 hover:text-red-900"
-                              title="Delete employee"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+                            </>
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => setEditingEmployee(employee)}
+                                className="text-blue-600 hover:text-blue-900"
+                                title="Edit employee"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => setEditingVacation(employee)}
+                                className="text-purple-600 hover:text-purple-900"
+                                title="Edit vacation balance"
+                              >
+                                <Calendar className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteEmployee(employee.id)}
+                                className="text-red-600 hover:text-red-900"
+                                title="Delete employee"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderPolicies = () => (
     <div className="space-y-6">
