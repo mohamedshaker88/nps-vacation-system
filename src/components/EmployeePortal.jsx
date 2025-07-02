@@ -36,6 +36,10 @@ const EmployeePortal = () => {
   const [showRequestForm, setShowRequestForm] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
 
+  const [policy, setPolicy] = useState(null);
+  const [policyLoading, setPolicyLoading] = useState(false);
+  const [policyError, setPolicyError] = useState('');
+
   const leaveTypes = [
     { value: 'Annual Leave', label: 'Annual Leave', maxDays: 14, paid: true, description: 'Paid vacation time' },
     { value: 'Sick Leave', label: 'Sick Leave', maxDays: 1, paid: true, description: 'Paid sick day (1 day maximum per request)' },
@@ -763,85 +767,37 @@ const EmployeePortal = () => {
   const renderLeavePolicy = () => (
     <div className="space-y-6">
       <h2 className="text-xl font-semibold">Leave Policy & Guidelines</h2>
-      
-      <div className="bg-white rounded-lg shadow-sm border p-6">
-        <h3 className="text-lg font-semibold mb-4">Your Leave Entitlements</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-blue-50 p-4 rounded-lg">
-            <h4 className="font-medium text-blue-800 mb-2">Paid Leave</h4>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span>Annual Leave:</span>
-                <span className="font-medium">15 days per year</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Sick Leave:</span>
-                <span className="font-medium">10 days per year (1 day max per request)</span>
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h4 className="font-medium text-gray-800 mb-2">Additional Leave Options</h4>
-            <div className="space-y-2 text-sm">
-              <div className="text-gray-600">
-                Additional leave types available as needed (unpaid)
-              </div>
-              <div className="text-xs text-gray-500">
-                Contact HR for details on emergency, personal, maternity, paternity, bereavement, religious, and compensatory time
-              </div>
-            </div>
+      {policyLoading ? (
+        <div>Loading...</div>
+      ) : policyError ? (
+        <div className="text-red-600">{policyError}</div>
+      ) : policy ? (
+        <div>
+          <div className="mb-4">
+            <h3 className="font-semibold mb-2">Leave Types</h3>
+            <pre className="bg-gray-100 p-2 rounded text-xs overflow-x-auto">{JSON.stringify(policy.leaveTypes, null, 2)}</pre>
           </div>
         </div>
-      </div>
-
-      <div className="bg-white rounded-lg shadow-sm border p-6">
-        <h3 className="text-lg font-semibold mb-4">Request Guidelines</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <h4 className="font-medium mb-3">Before Submitting</h4>
-            <ul className="space-y-2 text-sm text-gray-600">
-              <li>• Check your leave balance before requesting</li>
-              <li>• Submit requests at least 2 weeks in advance</li>
-              <li>• Arrange coverage with a teammate</li>
-              <li>• Provide emergency contact information</li>
-              <li>• Include detailed reason for leave</li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="font-medium mb-3">Important Rules</h4>
-            <ul className="space-y-2 text-sm text-gray-600">
-              <li>• Sick leave: Maximum 1 day per request</li>
-              <li>• Emergency leave: 24-hour notice minimum</li>
-              <li>• Medical certificates required for sick leave</li>
-              <li>• Maximum 3 people on leave simultaneously</li>
-              <li>• Weekend coverage requires special arrangement</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-lg shadow-sm border p-6">
-        <h3 className="text-lg font-semibold mb-4">Contact Information</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="flex items-center space-x-3">
-            <Mail className="h-5 w-5 text-gray-400" />
-            <div>
-              <p className="font-medium">HR Department</p>
-              <p className="text-sm text-gray-600">hr@technetworkinc.com</p>
-            </div>
-          </div>
-          <div className="flex items-center space-x-3">
-            <Phone className="h-5 w-5 text-gray-400" />
-            <div>
-              <p className="font-medium">Manager</p>
-              <p className="text-sm text-gray-600">+1-xxx-xxx-xxxx</p>
-            </div>
-          </div>
-        </div>
-      </div>
+      ) : (
+        <div>No policy found.</div>
+      )}
     </div>
   );
+
+  useEffect(() => {
+    async function fetchPolicy() {
+      setPolicyLoading(true);
+      try {
+        const res = await dataService.getCurrentPolicy();
+        setPolicy(res?.content || null);
+      } catch (e) {
+        setPolicyError('Failed to load policy');
+      } finally {
+        setPolicyLoading(false);
+      }
+    }
+    fetchPolicy();
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50">

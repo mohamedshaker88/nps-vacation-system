@@ -133,5 +133,31 @@ export const dataService = {
     
     if (error && error.code !== 'PGRST116') throw error
     return !!data
+  },
+
+  // Policy operations
+  async getCurrentPolicy() {
+    const { data, error } = await supabase
+      .from('policies')
+      .select('*')
+      .eq('published', true)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async updatePolicy(content) {
+    // Unpublish all current policies
+    await supabase.from('policies').update({ published: false }).eq('published', true);
+    // Insert new published policy
+    const { data, error } = await supabase
+      .from('policies')
+      .insert([{ content, published: true }])
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
   }
 } 

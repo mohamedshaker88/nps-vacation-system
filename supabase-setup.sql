@@ -33,6 +33,17 @@ CREATE TABLE requests (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Create policies table for dynamic leave policy management
+CREATE TABLE IF NOT EXISTS policies (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  content jsonb NOT NULL,
+  updated_at timestamp with time zone DEFAULT now(),
+  published boolean DEFAULT true
+);
+
+-- Only one policy is published at a time
+CREATE UNIQUE INDEX IF NOT EXISTS idx_policies_published ON policies(published) WHERE published = true;
+
 -- Create indexes for better performance
 CREATE INDEX idx_requests_employee_email ON requests(employee_email);
 CREATE INDEX idx_requests_status ON requests(status);

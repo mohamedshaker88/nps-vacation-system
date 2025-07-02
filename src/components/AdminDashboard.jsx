@@ -268,6 +268,55 @@ const AdminDashboard = () => {
 
   const stats = getDashboardStats();
 
+  const [policy, setPolicy] = useState(null);
+  const [policyDraft, setPolicyDraft] = useState(null);
+  const [editingPolicy, setEditingPolicy] = useState(false);
+  const [policyLoading, setPolicyLoading] = useState(false);
+  const [policyError, setPolicyError] = useState('');
+
+  useEffect(() => {
+    async function fetchPolicy() {
+      setPolicyLoading(true);
+      try {
+        const res = await dataService.getCurrentPolicy();
+        setPolicy(res?.content || null);
+        setPolicyDraft(res?.content || null);
+      } catch (e) {
+        setPolicyError('Failed to load policy');
+      } finally {
+        setPolicyLoading(false);
+      }
+    }
+    fetchPolicy();
+  }, []);
+
+  const handlePolicyEdit = () => {
+    setEditingPolicy(true);
+  };
+
+  const handlePolicyCancel = () => {
+    setPolicyDraft(policy);
+    setEditingPolicy(false);
+  };
+
+  const handlePolicySave = async () => {
+    setPolicyLoading(true);
+    setPolicyError('');
+    try {
+      await dataService.updatePolicy(policyDraft);
+      setPolicy(policyDraft);
+      setEditingPolicy(false);
+    } catch (e) {
+      setPolicyError('Failed to save policy');
+    } finally {
+      setPolicyLoading(false);
+    }
+  };
+
+  const handlePolicyDraftChange = (section, value) => {
+    setPolicyDraft({ ...policyDraft, [section]: value });
+  };
+
   // Login form
   if (!isAuthenticated) {
     return (
@@ -921,129 +970,41 @@ const AdminDashboard = () => {
   const renderPolicies = () => (
     <div className="space-y-6">
       <h2 className="text-xl font-semibold">Leave Policies & Guidelines</h2>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white rounded-lg shadow-sm border p-6">
-          <h3 className="text-lg font-semibold mb-4 text-blue-800">Company Leave Policy</h3>
-          <div className="space-y-3 text-sm">
-            <div className="flex justify-between">
-              <span>Annual Leave:</span>
-              <span className="font-medium">15 days per year</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Sick Leave:</span>
-              <span className="font-medium">10 days per year (1 day max per request)</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Maternity Leave:</span>
-              <span className="font-medium">70 days (Unpaid)</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Religious Holidays:</span>
-              <span className="font-medium">As per calendar</span>
-            </div>
-            <div className="mt-4 p-3 bg-blue-50 rounded">
-              <p className="text-xs text-blue-800">
-                Annual leave must be taken within the year or carried forward with approval. 
-                Sick leave requires medical certificate for documentation.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm border p-6">
-          <h3 className="text-lg font-semibold mb-4 text-green-800">Additional Benefits</h3>
-          <div className="space-y-3 text-sm">
-            <div className="flex justify-between">
-              <span>Emergency Leave:</span>
-              <span className="font-medium">3 days per incident (Unpaid)</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Bereavement Leave:</span>
-              <span className="font-medium">5 days per incident (Unpaid)</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Paternity Leave:</span>
-              <span className="font-medium">7 days (Unpaid)</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Personal Days:</span>
-              <span className="font-medium">As needed (Unpaid)</span>
-            </div>
-            <div className="mt-4 p-3 bg-green-50 rounded">
-              <p className="text-xs text-green-800">
-                Only Annual Leave and Sick Leave are paid. All other leave types are unpaid but available as needed. 
-                Coverage must be arranged for all leave requests.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-lg shadow-sm border p-6">
-        <h3 className="text-lg font-semibold mb-4">Leave Request Guidelines</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {policyLoading ? (
+        <div>Loading...</div>
+      ) : policyError ? (
+        <div className="text-red-600">{policyError}</div>
+      ) : editingPolicy ? (
+        <div className="space-y-4">
+          {/* Example: Edit leave types as JSON */}
           <div>
-            <h4 className="font-medium mb-3 text-gray-800">Request Procedures</h4>
-            <ul className="space-y-2 text-sm text-gray-600">
-              <li>• Submit requests at least 2 weeks in advance for planned leave</li>
-              <li>• Emergency leave can be requested with 24-hour notice</li>
-              <li>• All requests must include coverage arrangements</li>
-              <li>• Medical certificates required for sick leave documentation</li>
-              <li>• Maximum 3 people can be on leave simultaneously</li>
-              <li>• Peak periods (holidays) require 4 weeks advance notice</li>
-            </ul>
+            <label className="block font-medium mb-1">Leave Types (JSON)</label>
+            <textarea
+              className="w-full border rounded p-2 font-mono text-xs"
+              rows={8}
+              value={JSON.stringify(policyDraft?.leaveTypes || [], null, 2)}
+              onChange={e => handlePolicyDraftChange('leaveTypes', JSON.parse(e.target.value))}
+            />
           </div>
-          <div>
-            <h4 className="font-medium mb-3 text-gray-800">Coverage Requirements</h4>
-            <ul className="space-y-2 text-sm text-gray-600">
-              <li>• 24/7 coverage must be maintained (5pm-1am daily)</li>
-              <li>• Minimum 8 staff members must be available</li>
-              <li>• Cross-training required for all team members</li>
-              <li>• Emergency contact list maintained</li>
-              <li>• Backup coverage person must confirm availability</li>
-              <li>• Weekend coverage requires special arrangement</li>
-            </ul>
+          {/* Add more editors for other sections as needed */}
+          <div className="flex gap-2">
+            <button onClick={handlePolicySave} className="bg-blue-600 text-white px-4 py-2 rounded">Publish</button>
+            <button onClick={handlePolicyCancel} className="bg-gray-300 px-4 py-2 rounded">Cancel</button>
           </div>
         </div>
-      </div>
-
-      <div className="bg-white rounded-lg shadow-sm border p-6">
-        <h3 className="text-lg font-semibold mb-4">Leave Types & Entitlements</h3>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Leave Type</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Max Duration</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Notice Required</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Documentation</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Pay Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {leaveTypes.map((type, index) => (
-                <tr key={index} className="hover:bg-gray-50">
-                  <td className="px-4 py-2 text-sm font-medium">{type.label}</td>
-                  <td className="px-4 py-2 text-sm">{type.maxDays} days</td>
-                  <td className="px-4 py-2 text-sm">
-                    {type.value === 'Emergency Leave' ? '24 hours' : 
-                     type.value === 'Sick Leave' ? 'ASAP' : '2 weeks'}
-                  </td>
-                  <td className="px-4 py-2 text-sm">
-                    {type.value.includes('Sick') || type.value.includes('Medical') ? 'Medical cert' :
-                     type.value === 'Bereavement Leave' ? 'Death certificate' :
-                     type.value === 'Maternity Leave' ? 'Medical report' : 'None'}
-                  </td>
-                  <td className="px-4 py-2 text-sm">
-                    {type.paid ? 'Paid' : 'Unpaid'}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      ) : policy ? (
+        <div>
+          {/* Render policy sections dynamically */}
+          <div className="mb-4">
+            <h3 className="font-semibold mb-2">Leave Types</h3>
+            <pre className="bg-gray-100 p-2 rounded text-xs overflow-x-auto">{JSON.stringify(policy.leaveTypes, null, 2)}</pre>
+          </div>
+          {/* Add more sections as needed */}
+          <button onClick={handlePolicyEdit} className="bg-blue-600 text-white px-4 py-2 rounded">Edit Policy</button>
         </div>
-      </div>
+      ) : (
+        <div>No policy found.</div>
+      )}
     </div>
   );
 
