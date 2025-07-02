@@ -438,5 +438,39 @@ export const dataService = {
     
     if (error) throw error
     return data[0] || { is_valid: false, error_message: 'Validation failed' }
+  },
+
+  // Notification functions
+  async getNotifications(employeeId) {
+    const { data, error } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('employee_id', employeeId)
+      .order('created_at', { ascending: false })
+    
+    if (error) throw error
+    return data || []
+  },
+
+  async markNotificationAsRead(notificationId) {
+    const { data, error } = await supabase
+      .from('notifications')
+      .update({ is_read: true })
+      .eq('id', notificationId)
+      .select()
+    
+    if (error) throw error
+    return data[0]
+  },
+
+  async getUnreadNotificationCount(employeeId) {
+    const { count, error } = await supabase
+      .from('notifications')
+      .select('*', { count: 'exact', head: true })
+      .eq('employee_id', employeeId)
+      .eq('is_read', false)
+    
+    if (error) throw error
+    return count || 0
   }
 } 

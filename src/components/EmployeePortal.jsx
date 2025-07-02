@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, User, Send, CheckCircle, XCircle, AlertCircle, FileText, Phone, Mail, LogOut, Eye, EyeOff } from 'lucide-react';
+import { Calendar, Clock, User, Send, CheckCircle, XCircle, AlertCircle, FileText, Phone, Mail, LogOut, Eye, EyeOff, Bell } from 'lucide-react';
 import { dataService } from '../services/dataService';
 
 const EmployeePortal = () => {
@@ -40,6 +40,9 @@ const EmployeePortal = () => {
   const [availableCoverage, setAvailableCoverage] = useState([]);
 
   const [showRequestForm, setShowRequestForm] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   // Load available coverage for exchange requests
   const loadAvailableCoverage = async (date) => {
@@ -196,6 +199,14 @@ const EmployeePortal = () => {
       const allEmployees = await dataService.getEmployees();
       const otherEmployees = allEmployees.filter(emp => emp.email !== employee.email);
       setTeammates(otherEmployees);
+
+      // Load notifications
+      const employeeNotifications = await dataService.getNotifications(employee.id);
+      setNotifications(employeeNotifications);
+      
+      // Load unread count
+      const unreadNotifications = await dataService.getUnreadNotificationCount(employee.id);
+      setUnreadCount(unreadNotifications);
     } catch (error) {
       console.error('Error loading employee data:', error);
     } finally {
@@ -1129,6 +1140,67 @@ const EmployeePortal = () => {
                 <Clock className="inline h-3 w-3 sm:h-4 sm:w-4 mr-1" />
                 Shift: 5:00 PM - 1:00 AM
               </div>
+              
+              {/* Notification Bell */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowNotifications(!showNotifications)}
+                  className="flex items-center justify-center px-3 py-2 text-xs sm:text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md relative"
+                >
+                  <Bell className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
+                      {unreadCount}
+                    </span>
+                  )}
+                </button>
+                
+                {/* Notification Dropdown */}
+                {showNotifications && (
+                  <div className="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg border z-50 max-h-96 overflow-y-auto">
+                    <div className="p-4 border-b">
+                      <h3 className="font-semibold text-sm">Notifications</h3>
+                    </div>
+                    {notifications.length === 0 ? (
+                      <div className="p-4 text-gray-500 text-center text-sm">
+                        No notifications
+                      </div>
+                    ) : (
+                      <div className="divide-y">
+                        {notifications.map((notification) => (
+                          <div 
+                            key={notification.id} 
+                            className={`p-4 hover:bg-gray-50 cursor-pointer ${!notification.is_read ? 'bg-blue-50' : ''}`}
+                            onClick={async () => {
+                              if (!notification.is_read) {
+                                await dataService.markNotificationAsRead(notification.id);
+                                setNotifications(notifications.map(n => 
+                                  n.id === notification.id ? { ...n, is_read: true } : n
+                                ));
+                                setUnreadCount(Math.max(0, unreadCount - 1));
+                              }
+                            }}
+                          >
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <h4 className="font-medium text-sm">{notification.title}</h4>
+                                <p className="text-sm text-gray-600 mt-1">{notification.message}</p>
+                                <p className="text-xs text-gray-400 mt-2">
+                                  {new Date(notification.created_at).toLocaleString()}
+                                </p>
+                              </div>
+                              {!notification.is_read && (
+                                <div className="w-2 h-2 bg-blue-500 rounded-full ml-2"></div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+              
               <button
                 onClick={handleLogout}
                 className="flex items-center justify-center px-3 py-2 text-xs sm:text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md"
