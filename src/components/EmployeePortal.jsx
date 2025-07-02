@@ -65,13 +65,6 @@ const EmployeePortal = () => {
   const leaveTypes = [
     { value: 'Annual Leave', label: 'Annual Leave', maxDays: 14, paid: true, description: 'Paid vacation time' },
     { value: 'Sick Leave', label: 'Sick Leave', maxDays: 1, paid: true, description: 'Paid sick day (1 day maximum per request)' },
-    { value: 'Emergency Leave', label: 'Emergency Leave', maxDays: 3, paid: false, description: 'Unpaid emergency leave' },
-    { value: 'Personal Leave', label: 'Personal Day', maxDays: 1, paid: false, description: 'Unpaid personal day' },
-    { value: 'Maternity Leave', label: 'Maternity Leave', maxDays: 70, paid: false, description: 'Unpaid maternity leave' },
-    { value: 'Paternity Leave', label: 'Paternity Leave', maxDays: 7, paid: false, description: 'Unpaid paternity leave' },
-    { value: 'Bereavement Leave', label: 'Bereavement Leave', maxDays: 5, paid: false, description: 'Unpaid bereavement leave' },
-    { value: 'Religious Leave', label: 'Religious Leave', maxDays: 2, paid: false, description: 'Unpaid religious observance' },
-    { value: 'Compensatory Time', label: 'Comp Time', maxDays: 3, paid: false, description: 'Unpaid compensation time' },
     { value: 'Exchange Off Days', label: 'Exchange Off Days', maxDays: 1, paid: false, description: 'Exchange scheduled off days with other days', isExchange: true }
   ];
 
