@@ -137,15 +137,25 @@ export const dataService = {
 
   // Policy operations
   async getCurrentPolicy() {
-    const { data, error } = await supabase
-      .from('policies')
-      .select('*')
-      .eq('published', true)
-      .order('updated_at', { ascending: false })
-      .limit(1)
-      .single();
-    if (error) throw error;
-    return data;
+    try {
+      const { data, error } = await supabase
+        .from('policies')
+        .select('*')
+        .eq('published', true)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .single();
+      
+      if (error) {
+        console.error('Error fetching policy:', error);
+        // Return null if no policy found or table doesn't exist
+        return null;
+      }
+      return data;
+    } catch (error) {
+      console.error('Exception in getCurrentPolicy:', error);
+      return null;
+    }
   },
 
   async updatePolicy(content) {

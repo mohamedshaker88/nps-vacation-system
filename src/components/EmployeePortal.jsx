@@ -65,6 +65,64 @@ const EmployeePortal = () => {
     }
   }, []);
 
+  // Fetch policy data
+  useEffect(() => {
+    async function fetchPolicy() {
+      setPolicyLoading(true);
+      try {
+        console.log('Fetching policy...');
+        const res = await dataService.getCurrentPolicy();
+        console.log('Policy response:', res);
+        
+        if (res && res.content) {
+          setPolicy(res.content);
+        } else {
+          // No policy found, use default
+          console.log('No policy found, using default');
+          setPolicy({
+            leaveTypes: leaveTypes,
+            entitlements: { annualLeave: 15, sickLeave: 10 },
+            guidelines: {
+              requestProcedures: [
+                "Submit requests at least 2 weeks in advance for planned leave",
+                "Emergency leave can be requested with 24-hour notice",
+                "All requests must include coverage arrangements"
+              ],
+              coverageRequirements: [
+                "24/7 coverage must be maintained (5pm-1am daily)",
+                "Minimum 8 staff members must be available",
+                "Cross-training required for all team members"
+              ]
+            }
+          });
+        }
+      } catch (e) {
+        console.error('Error fetching policy:', e);
+        setPolicyError('Failed to load policy');
+        // Set a default policy to prevent white page
+        setPolicy({
+          leaveTypes: leaveTypes,
+          entitlements: { annualLeave: 15, sickLeave: 10 },
+          guidelines: {
+            requestProcedures: [
+              "Submit requests at least 2 weeks in advance for planned leave",
+              "Emergency leave can be requested with 24-hour notice",
+              "All requests must include coverage arrangements"
+            ],
+            coverageRequirements: [
+              "24/7 coverage must be maintained (5pm-1am daily)",
+              "Minimum 8 staff members must be available",
+              "Cross-training required for all team members"
+            ]
+          }
+        });
+      } finally {
+        setPolicyLoading(false);
+      }
+    }
+    fetchPolicy();
+  }, []);
+
   const loadEmployeeData = async (employee) => {
     try {
       setLoading(true);
@@ -832,21 +890,6 @@ const EmployeePortal = () => {
       )}
     </div>
   );
-
-  useEffect(() => {
-    async function fetchPolicy() {
-      setPolicyLoading(true);
-      try {
-        const res = await dataService.getCurrentPolicy();
-        setPolicy(res?.content || null);
-      } catch (e) {
-        setPolicyError('Failed to load policy');
-      } finally {
-        setPolicyLoading(false);
-      }
-    }
-    fetchPolicy();
-  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50">
