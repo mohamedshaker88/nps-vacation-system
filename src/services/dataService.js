@@ -18,6 +18,8 @@ export const dataService = {
       .order('created_at', { ascending: false })
     
     if (error) throw error
+    
+    console.log('Retrieved employees from database:', data);
     return data || []
   },
 
@@ -61,6 +63,8 @@ export const dataService = {
       sick_leave_total: sickLeaveTotal
     };
     
+    console.log('Sending update data to database:', { id, updateData });
+    
     const { data, error } = await supabase
       .from('employees')
       .update(updateData)
@@ -72,6 +76,7 @@ export const dataService = {
       throw error;
     }
     
+    console.log('Database response:', data[0]);
     return data[0]
   },
 

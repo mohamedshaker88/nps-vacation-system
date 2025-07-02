@@ -169,6 +169,14 @@ const AdminDashboard = () => {
     
     try {
       setLoading(true);
+      console.log('Updating vacation balance for employee:', editingVacation.id);
+      console.log('New values:', {
+        annual_leave_remaining: editingVacation.annual_leave_remaining,
+        sick_leave_remaining: editingVacation.sick_leave_remaining,
+        annual_leave_total: editingVacation.annual_leave_total,
+        sick_leave_total: editingVacation.sick_leave_total
+      });
+      
       await dataService.updateEmployeeVacationBalance(
         editingVacation.id,
         editingVacation.annual_leave_remaining,
@@ -177,9 +185,15 @@ const AdminDashboard = () => {
         editingVacation.sick_leave_total
       );
       
-      // Refresh employee data from database to ensure consistency
-      const updatedEmployees = await dataService.getEmployees();
+      // Refresh both employee and request data from database to ensure consistency
+      const [updatedEmployees, updatedRequests] = await Promise.all([
+        dataService.getEmployees(),
+        dataService.getRequests()
+      ]);
+      
+      console.log('Updated employee data:', updatedEmployees.find(emp => emp.id === editingVacation.id));
       setEmployees(updatedEmployees);
+      setRequests(updatedRequests);
       
       setEditingVacation(null);
       alert('Vacation balance updated successfully!');
@@ -912,6 +926,8 @@ const AdminDashboard = () => {
                     const sickRemaining = employee.sick_leave_remaining !== null && employee.sick_leave_remaining !== undefined 
                       ? employee.sick_leave_remaining 
                       : (employee.sick_leave_total || 10) - usedSick;
+
+
 
                     return (
                       <tr key={employee.id} className="hover:bg-gray-50">
