@@ -37,7 +37,25 @@ const EmployeePortal = () => {
     exchangeReason: ''
   });
 
+  const [availableCoverage, setAvailableCoverage] = useState([]);
+
   const [showRequestForm, setShowRequestForm] = useState(false);
+
+  // Load available coverage for exchange requests
+  const loadAvailableCoverage = async (date) => {
+    if (!date) {
+      setAvailableCoverage([]);
+      return;
+    }
+
+    try {
+      const coverage = await dataService.getAvailableCoverage(date);
+      setAvailableCoverage(coverage);
+    } catch (error) {
+      console.error('Error loading available coverage:', error);
+      setAvailableCoverage([]);
+    }
+  };
   const [activeTab, setActiveTab] = useState('overview');
 
   const [policy, setPolicy] = useState(null);
@@ -128,6 +146,13 @@ const EmployeePortal = () => {
     }
     fetchPolicy();
   }, []);
+
+  // Load available coverage when exchange request date changes
+  useEffect(() => {
+    if (newRequest.type === 'Exchange Off Days' && newRequest.startDate) {
+      loadAvailableCoverage(newRequest.startDate);
+    }
+  }, [newRequest.type, newRequest.startDate]);
 
   const refreshEmployeeData = async (email) => {
     try {
@@ -304,16 +329,40 @@ const EmployeePortal = () => {
       return;
     }
 
+    const selectedLeaveType = leaveTypes.find(type => type.value === newRequest.type);
+    const days = calculateDays(newRequest.startDate, newRequest.endDate);
+
     // Additional validation for exchange requests
     if (newRequest.type === 'Exchange Off Days') {
       if (!newRequest.exchangeFromDate || !newRequest.exchangeToDate || !newRequest.exchangeReason) {
         alert('Please fill in all exchange request fields');
         return;
       }
-    }
 
-    const selectedLeaveType = leaveTypes.find(type => type.value === newRequest.type);
-    const days = calculateDays(newRequest.startDate, newRequest.endDate);
+      // Validate that exchange is exactly 1 day
+      if (days !== 1) {
+        alert('Exchange Off Days requests must be exactly 1 day');
+        return;
+      }
+
+      // Validate that the covering person has an off day on the requested date
+      if (newRequest.coverageBy) {
+        try {
+          const coveringEmployee = teammates.find(emp => emp.name === newRequest.coverageBy);
+          if (coveringEmployee) {
+            const dayStatus = await dataService.getEmployeeDayStatus(coveringEmployee.id, newRequest.startDate);
+            if (dayStatus !== 'off') {
+              alert(`The selected coverage person (${newRequest.coverageBy}) is scheduled to work on ${newRequest.startDate}. Please select someone who has an off day on that date.`);
+              return;
+            }
+          }
+        } catch (error) {
+          console.error('Error checking coverage availability:', error);
+          alert('Error validating coverage availability. Please try again.');
+          return;
+        }
+      }
+    }
     
     // Validate sick leave restriction
     if (newRequest.type === 'Sick Leave' && days > 1) {
@@ -828,6 +877,29 @@ const EmployeePortal = () => {
                 <option key={teammate.id} value={teammate.name}>{teammate.name}</option>
               ))}
             </select>
+          </div>
+        )}
+
+        {/* Show available coverage for exchange requests */}
+        {newRequest.type === 'Exchange Off Days' && newRequest.startDate && (
+          <div className="bg-blue-50 p-3 rounded-md">
+            <p className="text-sm text-blue-800 mb-2">
+              Available coverage for {newRequest.startDate}:
+            </p>
+            {availableCoverage.length > 0 ? (
+              <div className="space-y-1">
+                {availableCoverage
+                  .filter(emp => emp.employee_id !== currentEmployee.id)
+                  .map(emp => (
+                    <div key={emp.employee_id} className="text-sm text-blue-700">
+                      • {emp.employee_name} ({emp.employee_email})
+                    </div>
+                  ))
+                }
+              </div>
+            ) : (
+              <p className="text-sm text-blue-600">No employees available for coverage on this date</p>
+            )}
           </div>
         )}
 

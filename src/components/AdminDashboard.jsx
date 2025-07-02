@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Users, Clock, CheckCircle, XCircle, AlertCircle, Plus, Edit, Trash2, User, Mail, Phone, MapPin, FileText, Download, LogOut, Eye, EyeOff, Save, X, RefreshCw } from 'lucide-react';
 import { dataService } from '../services/dataService';
+import WorkScheduleManager from './WorkScheduleManager';
 
 const AdminDashboard = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -30,7 +31,25 @@ const AdminDashboard = () => {
     exchangeReason: ''
   });
 
+  const [availableCoverage, setAvailableCoverage] = useState([]);
+
   const [showRequestForm, setShowRequestForm] = useState(false);
+
+  // Load available coverage for exchange requests
+  const loadAvailableCoverage = async (date) => {
+    if (!date) {
+      setAvailableCoverage([]);
+      return;
+    }
+
+    try {
+      const coverage = await dataService.getAvailableCoverage(date);
+      setAvailableCoverage(coverage);
+    } catch (error) {
+      console.error('Error loading available coverage:', error);
+      setAvailableCoverage([]);
+    }
+  };
 
   // Employee management states
   const [showEmployeeForm, setShowEmployeeForm] = useState(false);
@@ -78,6 +97,13 @@ const AdminDashboard = () => {
       loadData();
     }
   }, [isAuthenticated]);
+
+  // Load available coverage when exchange request date changes
+  useEffect(() => {
+    if (newRequest.type === 'Exchange Off Days' && newRequest.startDate) {
+      loadAvailableCoverage(newRequest.startDate);
+    }
+  }, [newRequest.type, newRequest.startDate]);
 
   // Check if admin is already logged in
   useEffect(() => {
@@ -264,16 +290,40 @@ const AdminDashboard = () => {
       return;
     }
 
+    const employee = employees.find(emp => emp.id === parseInt(newRequest.employeeId));
+    const days = calculateDays(newRequest.startDate, newRequest.endDate);
+
     // Additional validation for exchange requests
     if (newRequest.type === 'Exchange Off Days') {
       if (!newRequest.exchangeFromDate || !newRequest.exchangeToDate || !newRequest.exchangeReason) {
         alert('Please fill in all exchange request fields');
         return;
       }
-    }
 
-    const employee = employees.find(emp => emp.id === parseInt(newRequest.employeeId));
-    const days = calculateDays(newRequest.startDate, newRequest.endDate);
+      // Validate that exchange is exactly 1 day
+      if (days !== 1) {
+        alert('Exchange Off Days requests must be exactly 1 day');
+        return;
+      }
+
+      // Validate that the covering person has an off day on the requested date
+      if (newRequest.coverageBy) {
+        try {
+          const coveringEmployee = employees.find(emp => emp.name === newRequest.coverageBy);
+          if (coveringEmployee) {
+            const dayStatus = await dataService.getEmployeeDayStatus(coveringEmployee.id, newRequest.startDate);
+            if (dayStatus !== 'off') {
+              alert(`The selected coverage person (${newRequest.coverageBy}) is scheduled to work on ${newRequest.startDate}. Please select someone who has an off day on that date.`);
+              return;
+            }
+          }
+        } catch (error) {
+          console.error('Error checking coverage availability:', error);
+          alert('Error validating coverage availability. Please try again.');
+          return;
+        }
+      }
+    }
     
     const request = {
       employee_name: employee.name,
@@ -710,6 +760,29 @@ const AdminDashboard = () => {
                 <option key={emp.id} value={emp.name}>{emp.name}</option>
               ))}
             </select>
+          </div>
+        )}
+
+        {/* Show available coverage for exchange requests */}
+        {newRequest.type === 'Exchange Off Days' && newRequest.startDate && (
+          <div className="bg-blue-50 p-3 rounded-md">
+            <p className="text-sm text-blue-800 mb-2">
+              Available coverage for {newRequest.startDate}:
+            </p>
+            {availableCoverage.length > 0 ? (
+              <div className="space-y-1">
+                {availableCoverage
+                  .filter(emp => emp.employee_id !== parseInt(newRequest.employeeId))
+                  .map(emp => (
+                    <div key={emp.employee_id} className="text-sm text-blue-700">
+                      • {emp.employee_name} ({emp.employee_email})
+                    </div>
+                  ))
+                }
+              </div>
+            ) : (
+              <p className="text-sm text-blue-600">No employees available for coverage on this date</p>
+            )}
           </div>
         )}
 
@@ -1403,6 +1476,7 @@ const AdminDashboard = () => {
             { id: 'dashboard', label: 'Dashboard', icon: Calendar },
             { id: 'requests', label: 'Requests', icon: FileText },
             { id: 'employees', label: 'Employees', icon: Users },
+            { id: 'schedule', label: 'Work Schedule', icon: Clock },
             { id: 'policies', label: 'Policies', icon: FileText }
           ].map(tab => (
             <button
@@ -1424,6 +1498,7 @@ const AdminDashboard = () => {
           {activeTab === 'dashboard' && renderDashboard()}
           {activeTab === 'requests' && renderRequests()}
           {activeTab === 'employees' && renderEmployees()}
+          {activeTab === 'schedule' && <WorkScheduleManager />}
           {activeTab === 'policies' && renderPolicies()}
         </div>
       </div>

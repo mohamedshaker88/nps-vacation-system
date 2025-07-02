@@ -205,5 +205,114 @@ export const dataService = {
     }
     
     return data;
+  },
+
+  // Work Schedule operations
+  async getWorkSchedules(weekStartDate = null) {
+    if (!weekStartDate) {
+      // Get current week start (Monday)
+      const today = new Date();
+      const dayOfWeek = today.getDay();
+      const daysToSubtract = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Convert Sunday=0 to Monday=0
+      weekStartDate = new Date(today.setDate(today.getDate() - daysToSubtract));
+      weekStartDate = weekStartDate.toISOString().split('T')[0];
+    }
+
+    const { data, error } = await supabase
+      .from('work_schedules')
+      .select(`
+        *,
+        employees (
+          id,
+          name,
+          email
+        )
+      `)
+      .eq('week_start_date', weekStartDate)
+      .order('employees(name)')
+    
+    if (error) throw error
+    return data || []
+  },
+
+  async getWorkScheduleByEmployee(employeeId, weekStartDate) {
+    const { data, error } = await supabase
+      .from('work_schedules')
+      .select('*')
+      .eq('employee_id', employeeId)
+      .eq('week_start_date', weekStartDate)
+      .single()
+    
+    if (error && error.code !== 'PGRST116') throw error
+    return data
+  },
+
+  async saveWorkSchedule(schedule) {
+    const { data, error } = await supabase
+      .from('work_schedules')
+      .upsert([schedule], { 
+        onConflict: 'employee_id,week_start_date',
+        ignoreDuplicates: false 
+      })
+      .select()
+    
+    if (error) throw error
+    return data[0]
+  },
+
+  async updateWorkSchedule(id, updates) {
+    const { data, error } = await supabase
+      .from('work_schedules')
+      .update(updates)
+      .eq('id', id)
+      .select()
+    
+    if (error) throw error
+    return data[0]
+  },
+
+  async deleteWorkSchedule(id) {
+    const { error } = await supabase
+      .from('work_schedules')
+      .delete()
+      .eq('id', id)
+    
+    if (error) throw error
+    return true
+  },
+
+  async getAvailableCoverage(date) {
+    const { data, error } = await supabase
+      .rpc('get_available_coverage', { p_date: date })
+    
+    if (error) throw error
+    return data || []
+  },
+
+  async getEmployeeDayStatus(employeeId, date) {
+    const { data, error } = await supabase
+      .rpc('get_employee_day_status', { 
+        p_employee_id: employeeId, 
+        p_date: date 
+      })
+    
+    if (error) throw error
+    return data
+  },
+
+  async createDefaultScheduleForEmployee(employeeId, weekStartDate) {
+    const defaultSchedule = {
+      employee_id: employeeId,
+      week_start_date: weekStartDate,
+      monday_status: 'working',
+      tuesday_status: 'working',
+      wednesday_status: 'working',
+      thursday_status: 'working',
+      friday_status: 'working',
+      saturday_status: 'off',
+      sunday_status: 'off'
+    };
+
+    return await this.saveWorkSchedule(defaultSchedule);
   }
 } 
