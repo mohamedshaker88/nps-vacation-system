@@ -54,17 +54,12 @@ export const dataService = {
   },
 
   async updateEmployeeVacationBalance(id, annualLeaveRemaining, sickLeaveRemaining, annualLeaveTotal, sickLeaveTotal) {
-    // First try to update with the new columns
-    let updateData = { 
+    const updateData = { 
       annual_leave_remaining: annualLeaveRemaining,
-      sick_leave_remaining: sickLeaveRemaining
+      sick_leave_remaining: sickLeaveRemaining,
+      annual_leave_total: annualLeaveTotal,
+      sick_leave_total: sickLeaveTotal
     };
-    
-    // Only include the new columns if they exist (fallback for when columns haven't been added yet)
-    if (annualLeaveTotal !== undefined && sickLeaveTotal !== undefined) {
-      updateData.annual_leave_total = annualLeaveTotal;
-      updateData.sick_leave_total = sickLeaveTotal;
-    }
     
     const { data, error } = await supabase
       .from('employees')
@@ -74,21 +69,6 @@ export const dataService = {
     
     if (error) {
       console.error('Error updating vacation balance:', error);
-      // If the new columns don't exist, try updating without them
-      if (error.message && error.message.includes('column') && error.message.includes('does not exist')) {
-        console.log('New columns not found, updating without them...');
-        const { data: fallbackData, error: fallbackError } = await supabase
-          .from('employees')
-          .update({ 
-            annual_leave_remaining: annualLeaveRemaining,
-            sick_leave_remaining: sickLeaveRemaining
-          })
-          .eq('id', id)
-          .select()
-        
-        if (fallbackError) throw fallbackError;
-        return fallbackData[0];
-      }
       throw error;
     }
     

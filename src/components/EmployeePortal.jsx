@@ -325,6 +325,7 @@ const EmployeePortal = () => {
   };
 
   // Calculate leave balances using dynamic policy
+  // Use individual employee remaining balances if available, otherwise calculate from requests
   const usedAnnual = myRequests.filter(r => 
     r.type === 'Annual Leave' && r.status === 'Approved'
   ).reduce((sum, r) => sum + r.days, 0);
@@ -333,8 +334,18 @@ const EmployeePortal = () => {
     r.type === 'Sick Leave' && r.status === 'Approved'
   ).reduce((sum, r) => sum + r.days, 0);
 
-  const annualLeaveEntitlement = policy?.entitlements?.annualLeave || 15;
-  const sickLeaveEntitlement = policy?.entitlements?.sickLeave || 10;
+  // Use individual employee remaining balances if available
+  const annualRemaining = currentEmployee?.annual_leave_remaining !== undefined 
+    ? currentEmployee.annual_leave_remaining 
+    : (annualLeaveEntitlement - usedAnnual);
+    
+  const sickRemaining = currentEmployee?.sick_leave_remaining !== undefined 
+    ? currentEmployee.sick_leave_remaining 
+    : (sickLeaveEntitlement - usedSick);
+
+  // Use individual employee entitlements if available, otherwise fall back to policy defaults
+  const annualLeaveEntitlement = currentEmployee?.annual_leave_total || policy?.entitlements?.annualLeave || 15;
+  const sickLeaveEntitlement = currentEmployee?.sick_leave_total || policy?.entitlements?.sickLeave || 10;
   const dynamicLeaveTypes = policy?.leaveTypes || leaveTypes; // Fallback to hardcoded if no policy
 
   // Authentication forms
@@ -521,7 +532,7 @@ const EmployeePortal = () => {
             <div>
               <p className="text-blue-600 text-sm font-medium">Annual Leave</p>
               <p className="text-2xl font-bold text-blue-800">
-                {annualLeaveEntitlement - usedAnnual}/{annualLeaveEntitlement}
+                {annualRemaining}/{annualLeaveEntitlement}
               </p>
               <p className="text-xs text-blue-600">Days Remaining</p>
             </div>
@@ -530,7 +541,7 @@ const EmployeePortal = () => {
           <div className="mt-3 w-full bg-blue-200 rounded-full h-2">
             <div 
               className="bg-blue-600 h-2 rounded-full" 
-              style={{width: `${(usedAnnual / annualLeaveEntitlement) * 100}%`}}
+              style={{width: `${((annualLeaveEntitlement - annualRemaining) / annualLeaveEntitlement) * 100}%`}}
             ></div>
           </div>
         </div>
@@ -540,7 +551,7 @@ const EmployeePortal = () => {
             <div>
               <p className="text-green-600 text-sm font-medium">Sick Leave</p>
               <p className="text-2xl font-bold text-green-800">
-                {sickLeaveEntitlement - usedSick}/{sickLeaveEntitlement}
+                {sickRemaining}/{sickLeaveEntitlement}
               </p>
               <p className="text-xs text-green-600">Days Remaining</p>
             </div>
@@ -549,7 +560,7 @@ const EmployeePortal = () => {
           <div className="mt-3 w-full bg-green-200 rounded-full h-2">
             <div 
               className="bg-green-600 h-2 rounded-full" 
-              style={{width: `${(usedSick / sickLeaveEntitlement) * 100}%`}}
+              style={{width: `${((sickLeaveEntitlement - sickRemaining) / sickLeaveEntitlement) * 100}%`}}
             ></div>
           </div>
         </div>
