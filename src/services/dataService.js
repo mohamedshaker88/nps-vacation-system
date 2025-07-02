@@ -88,7 +88,24 @@ export const dataService = {
       .select()
     
     if (error) throw error
-    return data[0]
+    
+    const savedRequest = data[0]
+    
+    // Manually create notification for exchange partner if needed
+    if (savedRequest.exchange_partner_id) {
+      try {
+        await supabase.rpc('create_exchange_notification_manual', {
+          p_request_id: savedRequest.id,
+          p_exchange_partner_id: savedRequest.exchange_partner_id
+        })
+        console.log('Notification created for exchange partner')
+      } catch (notificationError) {
+        console.error('Error creating notification:', notificationError)
+        // Don't fail the request if notification fails
+      }
+    }
+    
+    return savedRequest
   },
 
   async getRequests() {
