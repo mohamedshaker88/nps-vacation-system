@@ -170,8 +170,8 @@ const AdminDashboard = () => {
         editingVacation.id,
         editingVacation.annual_leave_remaining,
         editingVacation.sick_leave_remaining,
-        editingVacation.annual_leave_total,
-        editingVacation.sick_leave_total
+        undefined, // annual_leave_total - disabled for now
+        undefined  // sick_leave_total - disabled for now
       );
       
       // Update local state
@@ -978,7 +978,10 @@ const AdminDashboard = () => {
                                     className="w-16 border border-gray-300 rounded px-2 py-1 text-xs"
                                     min="0"
                                     max="30"
+                                    disabled={true}
+                                    title="Total allowed editing will be available after database update"
                                   />
+                                  <span className="text-xs text-gray-400">(Coming soon)</span>
                                 </div>
                               </div>
                             </div>
@@ -1021,7 +1024,10 @@ const AdminDashboard = () => {
                                     className="w-16 border border-gray-300 rounded px-2 py-1 text-xs"
                                     min="0"
                                     max="30"
+                                    disabled={true}
+                                    title="Total allowed editing will be available after database update"
                                   />
+                                  <span className="text-xs text-gray-400">(Coming soon)</span>
                                 </div>
                               </div>
                             </div>
