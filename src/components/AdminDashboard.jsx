@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Users, Clock, CheckCircle, XCircle, AlertCircle, Plus, Edit, Trash2, User, Mail, Phone, MapPin, FileText, Download, LogOut, Eye, EyeOff, Save, X, RefreshCw } from 'lucide-react';
+import { Calendar, Users, Clock, CheckCircle, XCircle, AlertCircle, Plus, Edit, Trash2, User, Mail, Phone, MapPin, FileText, Download, LogOut, Eye, EyeOff, Save, X, RefreshCw, Copy } from 'lucide-react';
 import { dataService } from '../services/dataService';
 import WorkScheduleManager from './WorkScheduleManager';
 import WorkScheduleTemplateManager from './WorkScheduleTemplateManager';

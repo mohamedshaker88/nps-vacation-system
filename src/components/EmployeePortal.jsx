@@ -453,7 +453,12 @@ const EmployeePortal = () => {
   const sickRemaining = currentEmployee?.sick_leave_remaining !== undefined 
     ? currentEmployee.sick_leave_remaining 
     : (sickLeaveEntitlement - usedSick);
-  const dynamicLeaveTypes = policy?.leaveTypes || leaveTypes; // Fallback to hardcoded if no policy
+
+  // Always ensure Exchange Off Days is present in dynamicLeaveTypes
+  const dynamicLeaveTypesRaw = policy?.leaveTypes || leaveTypes;
+  const dynamicLeaveTypes = dynamicLeaveTypesRaw.some(t => t.value === 'Exchange Off Days')
+    ? dynamicLeaveTypesRaw
+    : [...dynamicLeaveTypesRaw, leaveTypes.find(t => t.value === 'Exchange Off Days')];
 
   // Show loading state if authenticated but employee data is still loading
   if (isAuthenticated && employeeDataLoading) {

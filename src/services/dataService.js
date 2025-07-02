@@ -403,5 +403,40 @@ export const dataService = {
     };
 
     return await this.saveWorkScheduleTemplate(defaultTemplate);
+  },
+
+  // Exchange approval functions
+  async getPendingExchangeApprovals(employeeId) {
+    const { data, error } = await supabase
+      .rpc('get_pending_exchange_approvals', { p_employee_id: employeeId })
+    
+    if (error) throw error
+    return data || []
+  },
+
+  async approveExchangeRequest(requestId, employeeId, approved, notes = null) {
+    const { data, error } = await supabase
+      .rpc('approve_exchange_request', { 
+        p_request_id: requestId,
+        p_employee_id: employeeId,
+        p_approved: approved,
+        p_notes: notes
+      })
+    
+    if (error) throw error
+    return data
+  },
+
+  async validateExchangeRequest(employeeId, exchangeFromDate, exchangeToDate, exchangePartnerId) {
+    const { data, error } = await supabase
+      .rpc('validate_exchange_request', { 
+        p_employee_id: employeeId,
+        p_exchange_from_date: exchangeFromDate,
+        p_exchange_to_date: exchangeToDate,
+        p_exchange_partner_id: exchangePartnerId
+      })
+    
+    if (error) throw error
+    return data[0] || { is_valid: false, error_message: 'Validation failed' }
   }
 } 
