@@ -394,17 +394,11 @@ const AdminDashboard = () => {
     try {
       const request = requests.find(req => req.id === id);
       
-      // Check if request requires partner approval and hasn't been approved yet
-      if (request && request.exchange_partner_id && status === 'Approved') {
-        // Check if partner has approved
-        if (!request.exchange_partner_approved) {
-          alert('This request requires partner approval before it can be approved. The exchange partner must approve the request first.');
-          return;
-        }
-        
-        // Check if partner has rejected
-        if (request.exchange_partner_approved === false && request.exchange_partner_approved_at) {
-          alert('This request was rejected by the exchange partner and cannot be approved.');
+      // Check if admin can approve this request
+      if (request && status === 'Approved') {
+        const approvalCheck = await dataService.canAdminApproveRequest(id);
+        if (!approvalCheck.can_approve) {
+          alert(`Cannot approve this request: ${approvalCheck.reason}`);
           return;
         }
       }
@@ -413,6 +407,11 @@ const AdminDashboard = () => {
       setRequests(requests.map(req => 
         req.id === id ? { ...req, status } : req
       ));
+      
+      // Show success message for exchange requests
+      if (status === 'Approved' && request.exchange_partner_id) {
+        alert('Exchange request approved! Work schedules have been updated automatically.');
+      }
     } catch (error) {
       console.error('Error updating request:', error);
       alert('Error updating request status. Please try again.');
