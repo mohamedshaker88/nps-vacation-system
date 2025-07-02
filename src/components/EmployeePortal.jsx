@@ -154,35 +154,38 @@ const EmployeePortal = () => {
   const refreshEmployeeData = async (email) => {
     try {
       setEmployeeDataLoading(true);
+      console.log('=== REFRESHING EMPLOYEE DATA ===');
+      console.log('Looking up employee by email:', email);
+      
       // Get fresh employee data from database
       const freshEmployee = await dataService.getEmployeeByEmail(email);
+      console.log('Fresh employee data:', freshEmployee);
       
       if (freshEmployee) {
         setCurrentEmployee(freshEmployee);
+        console.log('Calling loadEmployeeData for fresh employee:', freshEmployee);
+        await loadEmployeeData(freshEmployee);
       } else {
+        console.error('No employee found for email:', email);
         // Fallback to localStorage data if database fetch fails
         const savedEmployee = localStorage.getItem('currentEmployee');
         if (savedEmployee) {
           const employee = JSON.parse(savedEmployee);
+          console.log('Using saved employee data:', employee);
           setCurrentEmployee(employee);
+          await loadEmployeeData(employee);
         }
       }
-      
-      // Load requests for this employee
-      const employeeRequests = await dataService.getRequestsByEmployee(email);
-      setMyRequests(employeeRequests);
-
-      // Load all employees for coverage selection
-      const allEmployees = await dataService.getEmployees();
-      const otherEmployees = allEmployees.filter(emp => emp.email !== email);
-      setTeammates(otherEmployees);
     } catch (error) {
       console.error('Error refreshing employee data:', error);
+      console.error('Error details:', error.message, error.stack);
       // Fallback to localStorage data if refresh fails
       const savedEmployee = localStorage.getItem('currentEmployee');
       if (savedEmployee) {
         const employee = JSON.parse(savedEmployee);
+        console.log('Using saved employee data after error:', employee);
         setCurrentEmployee(employee);
+        await loadEmployeeData(employee);
       }
     } finally {
       setEmployeeDataLoading(false);
@@ -192,30 +195,46 @@ const EmployeePortal = () => {
   const loadEmployeeData = async (employee) => {
     try {
       setLoading(true);
+      console.log('=== LOADING EMPLOYEE DATA ===');
+      console.log('Employee object:', employee);
+      console.log('Employee ID:', employee.id);
+      console.log('Employee Name:', employee.name);
+      console.log('Employee Email:', employee.email);
+      
       // Load requests for this employee
       const employeeRequests = await dataService.getRequestsByEmployee(employee.email);
       setMyRequests(employeeRequests);
+      console.log('Employee requests loaded:', employeeRequests);
 
       // Load all employees for coverage selection
       const allEmployees = await dataService.getEmployees();
       const otherEmployees = allEmployees.filter(emp => emp.email !== employee.email);
       setTeammates(otherEmployees);
+      console.log('Teammates loaded:', otherEmployees.length);
 
       // Load notifications
+      console.log('Loading notifications for employee ID:', employee.id);
       const employeeNotifications = await dataService.getNotifications(employee.id);
+      console.log('Notifications loaded:', employeeNotifications);
       setNotifications(employeeNotifications);
       
       // Load unread count
+      console.log('Loading unread count for employee ID:', employee.id);
       const unreadNotifications = await dataService.getUnreadNotificationCount(employee.id);
+      console.log('Unread count loaded:', unreadNotifications);
       setUnreadCount(unreadNotifications);
       
       // Load pending exchange approvals
-      console.log('Loading pending approvals for employee:', employee.id, employee.name);
+      console.log('Loading pending approvals for employee ID:', employee.id, 'Name:', employee.name);
       const pendingApprovals = await dataService.getPendingExchangeApprovals(employee.id);
       console.log('Pending approvals loaded:', pendingApprovals);
+      console.log('Pending approvals count:', pendingApprovals ? pendingApprovals.length : 0);
       setPendingExchangeApprovals(pendingApprovals);
+      
+      console.log('=== EMPLOYEE DATA LOADING COMPLETE ===');
     } catch (error) {
       console.error('Error loading employee data:', error);
+      console.error('Error details:', error.message, error.stack);
     } finally {
       setLoading(false);
     }
@@ -305,11 +324,14 @@ const EmployeePortal = () => {
       }
 
       // Login successful
+      console.log('=== LOGIN SUCCESSFUL ===');
+      console.log('Authenticated employee:', employee);
       setIsAuthenticated(true);
       localStorage.setItem('employeeAuth', 'true');
       localStorage.setItem('currentEmployee', JSON.stringify(employee));
       
       // Refresh employee data to get latest vacation balances
+      console.log('Calling refreshEmployeeData for:', employee.email);
       refreshEmployeeData(employee.email);
     } catch (error) {
       console.error('Error logging in:', error);
