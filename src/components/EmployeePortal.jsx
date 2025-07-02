@@ -435,19 +435,14 @@ const EmployeePortal = () => {
       end_date: newRequest.endDate,
       days: days,
       reason: newRequest.reason,
-      status: 'Pending',
-      submit_date: new Date().toISOString().split('T')[0],
-      coverage_by: newRequest.coverageBy || null,
-      emergency_contact: newRequest.emergencyContact || null,
-      additional_notes: newRequest.additionalNotes || null,
-      medical_certificate: newRequest.medicalCertificate || false,
-      exchange_from_date: newRequest.startDate,
-      exchange_to_date: newRequest.endDate,
-      exchange_reason: newRequest.exchangeReason || newRequest.reason,
-      exchange_partner_id: newRequest.exchangePartnerId ? parseInt(newRequest.exchangePartnerId) : null,
-      partner_desired_off_date: newRequest.partnerDesiredOffDate || null,
-      requires_partner_approval: newRequest.exchangePartnerId ? true : false
+      status: 'Pending'
     };
+
+    // Only add exchange fields if this is an exchange request
+    if (newRequest.type === 'Exchange Off Days' && newRequest.exchangePartnerId) {
+      request.exchange_partner_id = parseInt(newRequest.exchangePartnerId);
+      request.exchange_reason = newRequest.exchangeReason || newRequest.reason;
+    }
 
     try {
       console.log('Submitting request:', request);
