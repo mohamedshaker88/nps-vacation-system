@@ -408,8 +408,11 @@ const EmployeePortal = () => {
     };
 
     try {
+      console.log('Submitting request:', request);
+      
       // Save to Supabase
       const newRequestData = await dataService.saveRequest(request);
+      console.log('Request saved successfully:', newRequestData);
       
       // Update local state
       setMyRequests([newRequestData, ...myRequests]);
@@ -430,7 +433,13 @@ const EmployeePortal = () => {
       alert('Leave request submitted successfully!');
     } catch (error) {
       console.error('Error submitting request:', error);
-      alert('Error submitting request. Please try again.');
+      console.error('Error details:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint
+      });
+      alert(`Error submitting request: ${error.message || 'Please try again.'}`);
     }
   };
 

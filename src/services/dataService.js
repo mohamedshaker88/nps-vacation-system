@@ -282,22 +282,46 @@ export const dataService = {
   },
 
   async getAvailableCoverage(date) {
-    const { data, error } = await supabase
-      .rpc('get_available_coverage', { p_date: date })
-    
-    if (error) throw error
-    return data || []
+    try {
+      const { data, error } = await supabase
+        .rpc('get_available_coverage', { p_date: date })
+      
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error getting available coverage:', error);
+      // Fallback: return all employees as available
+      const { data: employees, error: empError } = await supabase
+        .from('employees')
+        .select('id, name, email')
+        .order('name')
+      
+      if (empError) throw empError
+      return employees.map(emp => ({
+        employee_id: emp.id,
+        employee_name: emp.name,
+        employee_email: emp.email,
+        day_status: 'off'
+      }))
+    }
   },
 
   async getEmployeeDayStatus(employeeId, date) {
-    const { data, error } = await supabase
-      .rpc('get_employee_day_status', { 
-        p_employee_id: employeeId, 
-        p_date: date 
-      })
-    
-    if (error) throw error
-    return data
+    try {
+      const { data, error } = await supabase
+        .rpc('get_employee_day_status', { 
+          p_employee_id: employeeId, 
+          p_date: date 
+        })
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error getting employee day status:', error);
+      // Fallback: return default schedule
+      const dayOfWeek = new Date(date).getDay();
+      return dayOfWeek === 0 || dayOfWeek === 6 ? 'off' : 'working';
+    }
   },
 
   async createDefaultScheduleForEmployee(employeeId, weekStartDate) {

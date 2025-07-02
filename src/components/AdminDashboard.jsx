@@ -72,13 +72,25 @@ const AdminDashboard = () => {
       setHasError(false);
       console.log('Loading admin data...');
       
-      const [employeesData, requestsData] = await Promise.all([
-        dataService.getEmployees(),
-        dataService.getRequests()
-      ]);
+      // Load employees first
+      let employeesData = [];
+      try {
+        employeesData = await dataService.getEmployees();
+        console.log('Employees data:', employeesData);
+      } catch (empError) {
+        console.error('Error loading employees:', empError);
+        employeesData = [];
+      }
       
-      console.log('Employees data:', employeesData);
-      console.log('Requests data:', requestsData);
+      // Load requests second
+      let requestsData = [];
+      try {
+        requestsData = await dataService.getRequests();
+        console.log('Requests data:', requestsData);
+      } catch (reqError) {
+        console.error('Error loading requests:', reqError);
+        requestsData = [];
+      }
       
       setEmployees(employeesData || []);
       setRequests(requestsData || []);
