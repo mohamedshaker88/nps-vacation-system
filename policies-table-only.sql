@@ -21,7 +21,8 @@ INSERT INTO policies (content, published) VALUES (
       {"value": "Paternity Leave", "label": "Paternity Leave", "maxDays": 7, "paid": false, "description": "Unpaid paternity leave"},
       {"value": "Bereavement Leave", "label": "Bereavement Leave", "maxDays": 5, "paid": false, "description": "Unpaid bereavement leave"},
       {"value": "Religious Leave", "label": "Religious Leave", "maxDays": 2, "paid": false, "description": "Unpaid religious observance"},
-      {"value": "Compensatory Time", "label": "Comp Time", "maxDays": 3, "paid": false, "description": "Unpaid compensation time"}
+      {"value": "Compensatory Time", "label": "Comp Time", "maxDays": 3, "paid": false, "description": "Unpaid compensation time"},
+      {"value": "Exchange Off Days", "label": "Exchange Off Days", "maxDays": 7, "paid": false, "description": "Exchange scheduled off days with other days", "isExchange": true}
     ],
     "entitlements": {
       "annualLeave": 15,

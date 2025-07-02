@@ -24,7 +24,10 @@ const AdminDashboard = () => {
     coverageBy: '',
     medicalCertificate: false,
     emergencyContact: '',
-    additionalNotes: ''
+    additionalNotes: '',
+    exchangeFromDate: '',
+    exchangeToDate: '',
+    exchangeReason: ''
   });
 
   const [showRequestForm, setShowRequestForm] = useState(false);
@@ -243,7 +246,8 @@ const AdminDashboard = () => {
     { value: 'Bereavement Leave', label: 'Bereavement Leave', requiresCoverage: true, maxDays: 5, paid: false },
     { value: 'Religious Leave', label: 'Religious Leave', requiresCoverage: true, maxDays: 2, paid: false },
     { value: 'Compensatory Time', label: 'Comp Time', requiresCoverage: true, maxDays: 3, paid: false },
-    { value: 'Unpaid Leave', label: 'Unpaid Leave', requiresCoverage: true, maxDays: 30, paid: false }
+    { value: 'Unpaid Leave', label: 'Unpaid Leave', requiresCoverage: true, maxDays: 30, paid: false },
+    { value: 'Exchange Off Days', label: 'Exchange Off Days', requiresCoverage: false, maxDays: 7, paid: false, isExchange: true }
   ];
 
   const calculateDays = (start, end) => {
@@ -258,6 +262,14 @@ const AdminDashboard = () => {
     if (!newRequest.employeeId || !newRequest.type || !newRequest.startDate || !newRequest.endDate) {
       alert('Please fill in all required fields');
       return;
+    }
+
+    // Additional validation for exchange requests
+    if (newRequest.type === 'Exchange Off Days') {
+      if (!newRequest.exchangeFromDate || !newRequest.exchangeToDate || !newRequest.exchangeReason) {
+        alert('Please fill in all exchange request fields');
+        return;
+      }
     }
 
     const employee = employees.find(emp => emp.id === parseInt(newRequest.employeeId));
@@ -277,7 +289,10 @@ const AdminDashboard = () => {
       coverage_by: newRequest.coverageBy,
       medical_certificate: newRequest.medicalCertificate,
       emergency_contact: newRequest.emergencyContact,
-      additional_notes: newRequest.additionalNotes
+      additional_notes: newRequest.additionalNotes,
+      exchange_from_date: newRequest.exchangeFromDate,
+      exchange_to_date: newRequest.exchangeToDate,
+      exchange_reason: newRequest.exchangeReason
     };
 
     try {
@@ -292,7 +307,10 @@ const AdminDashboard = () => {
         coverageBy: '',
         medicalCertificate: false,
         emergencyContact: '',
-        additionalNotes: ''
+        additionalNotes: '',
+        exchangeFromDate: '',
+        exchangeToDate: '',
+        exchangeReason: ''
       });
       setShowRequestForm(false);
     } catch (error) {
@@ -646,19 +664,54 @@ const AdminDashboard = () => {
           />
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Coverage Arranged With</label>
-          <select
-            value={newRequest.coverageBy}
-            onChange={(e) => setNewRequest({...newRequest, coverageBy: e.target.value})}
-            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">Select Coverage Person</option>
-            {employees.filter(emp => emp.id !== parseInt(newRequest.employeeId)).map(emp => (
-              <option key={emp.id} value={emp.name}>{emp.name}</option>
-            ))}
-          </select>
-        </div>
+        {leaveTypes.find(type => type.value === newRequest.type)?.isExchange ? (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Exchange From Date *</label>
+                <input
+                  type="date"
+                  value={newRequest.exchangeFromDate}
+                  onChange={(e) => setNewRequest({...newRequest, exchangeFromDate: e.target.value})}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Exchange To Date *</label>
+                <input
+                  type="date"
+                  value={newRequest.exchangeToDate}
+                  onChange={(e) => setNewRequest({...newRequest, exchangeToDate: e.target.value})}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Exchange Reason *</label>
+              <textarea
+                value={newRequest.exchangeReason}
+                onChange={(e) => setNewRequest({...newRequest, exchangeReason: e.target.value})}
+                rows={3}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Please explain why you need to exchange these off days"
+              />
+            </div>
+          </div>
+        ) : (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Coverage Arranged With</label>
+            <select
+              value={newRequest.coverageBy}
+              onChange={(e) => setNewRequest({...newRequest, coverageBy: e.target.value})}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Select Coverage Person</option>
+              {employees.filter(emp => emp.id !== parseInt(newRequest.employeeId)).map(emp => (
+                <option key={emp.id} value={emp.name}>{emp.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div className="flex justify-end space-x-3 pt-4">
           <button
@@ -710,13 +763,14 @@ const AdminDashboard = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Days</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Coverage</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Exchange Info</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {requests.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="px-6 py-4 text-center text-gray-500">
+                  <td colSpan="8" className="px-6 py-4 text-center text-gray-500">
                     No requests submitted yet
                   </td>
                 </tr>
@@ -741,6 +795,19 @@ const AdminDashboard = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {request.coverage_by || 'Not arranged'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {request.type === 'Exchange Off Days' && request.exchange_from_date ? (
+                        <div>
+                          <div className="text-xs text-gray-500">From: {request.exchange_from_date}</div>
+                          <div className="text-xs text-gray-500">To: {request.exchange_to_date}</div>
+                          {request.exchange_reason && (
+                            <div className="text-xs text-gray-600 mt-1">{request.exchange_reason}</div>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                       {request.status === 'Pending' && (

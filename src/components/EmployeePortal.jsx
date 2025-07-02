@@ -31,7 +31,10 @@ const EmployeePortal = () => {
     coverageBy: '',
     emergencyContact: '',
     additionalNotes: '',
-    medicalCertificate: false
+    medicalCertificate: false,
+    exchangeFromDate: '',
+    exchangeToDate: '',
+    exchangeReason: ''
   });
 
   const [showRequestForm, setShowRequestForm] = useState(false);
@@ -50,7 +53,8 @@ const EmployeePortal = () => {
     { value: 'Paternity Leave', label: 'Paternity Leave', maxDays: 7, paid: false, description: 'Unpaid paternity leave' },
     { value: 'Bereavement Leave', label: 'Bereavement Leave', maxDays: 5, paid: false, description: 'Unpaid bereavement leave' },
     { value: 'Religious Leave', label: 'Religious Leave', maxDays: 2, paid: false, description: 'Unpaid religious observance' },
-    { value: 'Compensatory Time', label: 'Comp Time', maxDays: 3, paid: false, description: 'Unpaid compensation time' }
+    { value: 'Compensatory Time', label: 'Comp Time', maxDays: 3, paid: false, description: 'Unpaid compensation time' },
+    { value: 'Exchange Off Days', label: 'Exchange Off Days', maxDays: 7, paid: false, description: 'Exchange scheduled off days with other days', isExchange: true }
   ];
 
   // Load data from Supabase
@@ -300,6 +304,14 @@ const EmployeePortal = () => {
       return;
     }
 
+    // Additional validation for exchange requests
+    if (newRequest.type === 'Exchange Off Days') {
+      if (!newRequest.exchangeFromDate || !newRequest.exchangeToDate || !newRequest.exchangeReason) {
+        alert('Please fill in all exchange request fields');
+        return;
+      }
+    }
+
     const selectedLeaveType = leaveTypes.find(type => type.value === newRequest.type);
     const days = calculateDays(newRequest.startDate, newRequest.endDate);
     
@@ -328,7 +340,10 @@ const EmployeePortal = () => {
       coverage_by: newRequest.coverageBy,
       emergency_contact: newRequest.emergencyContact,
       additional_notes: newRequest.additionalNotes,
-      medical_certificate: newRequest.medicalCertificate
+      medical_certificate: newRequest.medicalCertificate,
+      exchange_from_date: newRequest.exchangeFromDate,
+      exchange_to_date: newRequest.exchangeToDate,
+      exchange_reason: newRequest.exchangeReason
     };
 
     try {
@@ -345,7 +360,10 @@ const EmployeePortal = () => {
         coverageBy: '',
         emergencyContact: '',
         additionalNotes: '',
-        medicalCertificate: false
+        medicalCertificate: false,
+        exchangeFromDate: '',
+        exchangeToDate: '',
+        exchangeReason: ''
       });
       setShowRequestForm(false);
       alert('Leave request submitted successfully!');
@@ -764,19 +782,54 @@ const EmployeePortal = () => {
           />
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Coverage Arranged With</label>
-          <select
-            value={newRequest.coverageBy}
-            onChange={(e) => setNewRequest({...newRequest, coverageBy: e.target.value})}
-            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">Select Coverage Person</option>
-            {teammates.map(teammate => (
-              <option key={teammate.id} value={teammate.name}>{teammate.name}</option>
-            ))}
-          </select>
-        </div>
+        {dynamicLeaveTypes.find(type => type.value === newRequest.type)?.isExchange ? (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Exchange From Date *</label>
+                <input
+                  type="date"
+                  value={newRequest.exchangeFromDate}
+                  onChange={(e) => setNewRequest({...newRequest, exchangeFromDate: e.target.value})}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Exchange To Date *</label>
+                <input
+                  type="date"
+                  value={newRequest.exchangeToDate}
+                  onChange={(e) => setNewRequest({...newRequest, exchangeToDate: e.target.value})}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Exchange Reason *</label>
+              <textarea
+                value={newRequest.exchangeReason}
+                onChange={(e) => setNewRequest({...newRequest, exchangeReason: e.target.value})}
+                rows={3}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Please explain why you need to exchange these off days"
+              />
+            </div>
+          </div>
+        ) : (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Coverage Arranged With</label>
+            <select
+              value={newRequest.coverageBy}
+              onChange={(e) => setNewRequest({...newRequest, coverageBy: e.target.value})}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Select Coverage Person</option>
+              {teammates.map(teammate => (
+                <option key={teammate.id} value={teammate.name}>{teammate.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Emergency Contact</label>
@@ -869,13 +922,14 @@ const EmployeePortal = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Days</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Coverage</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Exchange Info</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Submitted</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {myRequests.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="px-6 py-4 text-center text-gray-500">
+                  <td colSpan="7" className="px-6 py-4 text-center text-gray-500">
                     No requests submitted yet
                   </td>
                 </tr>
@@ -894,6 +948,19 @@ const EmployeePortal = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {request.coverage_by || 'Not arranged'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {request.type === 'Exchange Off Days' && request.exchange_from_date ? (
+                        <div>
+                          <div className="text-xs text-gray-500">From: {request.exchange_from_date}</div>
+                          <div className="text-xs text-gray-500">To: {request.exchange_to_date}</div>
+                          {request.exchange_reason && (
+                            <div className="text-xs text-gray-600 mt-1">{request.exchange_reason}</div>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{request.submit_date}</td>
                   </tr>

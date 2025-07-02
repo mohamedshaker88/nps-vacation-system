@@ -30,6 +30,9 @@ CREATE TABLE requests (
   emergency_contact VARCHAR(255),
   additional_notes TEXT,
   medical_certificate BOOLEAN DEFAULT FALSE,
+  exchange_from_date DATE,
+  exchange_to_date DATE,
+  exchange_reason TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -50,6 +53,7 @@ CREATE INDEX idx_requests_status ON requests(status);
 CREATE INDEX idx_employees_email ON employees(email);
 CREATE INDEX idx_requests_created_at ON requests(created_at DESC);
 CREATE INDEX idx_employees_created_at ON employees(created_at DESC);
+CREATE INDEX idx_requests_exchange_dates ON requests(exchange_from_date, exchange_to_date) WHERE exchange_from_date IS NOT NULL;
 
 -- Enable Row Level Security (RLS)
 ALTER TABLE employees ENABLE ROW LEVEL SECURITY;
