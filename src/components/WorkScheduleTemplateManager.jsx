@@ -23,16 +23,20 @@ const WorkScheduleTemplateManager = () => {
     setLoading(true);
     setError('');
     try {
+      console.log('Loading work schedule data...');
       const [templatesData, employeesData] = await Promise.all([
         dataService.getWorkScheduleTemplates(),
         dataService.getEmployees()
       ]);
       
-      setTemplates(templatesData);
-      setEmployees(employeesData);
+      console.log('Templates loaded:', templatesData);
+      console.log('Employees loaded:', employeesData);
+      
+      setTemplates(templatesData || []);
+      setEmployees(employeesData || []);
     } catch (err) {
-      setError('Failed to load work schedule templates');
-      console.error('Error loading data:', err);
+      console.error('Error loading work schedule data:', err);
+      setError('Failed to load work schedule templates: ' + err.message);
     } finally {
       setLoading(false);
     }
@@ -48,6 +52,7 @@ const WorkScheduleTemplateManager = () => {
       
       if (!template) {
         // Create new template if it doesn't exist
+        console.log('Creating new template for employee:', employeeId);
         template = await dataService.createDefaultTemplateForEmployee(employeeId);
         setTemplates([...templates, template]);
       }
@@ -60,20 +65,22 @@ const WorkScheduleTemplateManager = () => {
         t.id === template.id ? updatedTemplate : t
       ));
     } catch (err) {
-      setError('Failed to update template');
       console.error('Error updating template:', err);
+      setError('Failed to update template: ' + err.message);
     }
   };
 
   const addTemplateForEmployee = async (employeeId) => {
     try {
+      console.log('Adding template for employee:', employeeId);
       const template = await dataService.createDefaultTemplateForEmployee(employeeId);
+      console.log('Template created:', template);
       setTemplates([...templates, template]);
       setShowAddTemplate(false);
       setSelectedEmployee(null);
     } catch (err) {
-      setError('Failed to add template for employee');
-      console.error('Error adding template:', err);
+      console.error('Error adding template for employee:', err);
+      setError('Failed to add template for employee: ' + err.message);
     }
   };
 
@@ -82,14 +89,16 @@ const WorkScheduleTemplateManager = () => {
       await dataService.deleteWorkScheduleTemplate(templateId);
       setTemplates(templates.filter(t => t.id !== templateId));
     } catch (err) {
-      setError('Failed to remove template');
       console.error('Error removing template:', err);
+      setError('Failed to remove template: ' + err.message);
     }
   };
 
   const getEmployeesWithoutTemplates = () => {
     const templatedEmployeeIds = templates.map(t => t.employee_id);
-    return employees.filter(emp => !templatedEmployeeIds.includes(emp.id));
+    const availableEmployees = employees.filter(emp => !templatedEmployeeIds.includes(emp.id));
+    console.log('Employees without templates:', availableEmployees);
+    return availableEmployees;
   };
 
   const getStatusIcon = (status) => {
@@ -120,8 +129,8 @@ const WorkScheduleTemplateManager = () => {
       
       alert('Schedules generated successfully for the current week!');
     } catch (err) {
-      setError('Failed to generate schedules');
       console.error('Error generating schedules:', err);
+      setError('Failed to generate schedules: ' + err.message);
     } finally {
       setGeneratingSchedules(false);
     }
@@ -151,8 +160,8 @@ const WorkScheduleTemplateManager = () => {
       setTemplates([...templates, createdTemplate]);
       alert('Template copied successfully!');
     } catch (err) {
-      setError('Failed to copy template');
       console.error('Error copying template:', err);
+      setError('Failed to copy template: ' + err.message);
     }
   };
 
@@ -164,6 +173,8 @@ const WorkScheduleTemplateManager = () => {
       </div>
     );
   }
+
+  const employeesWithoutTemplates = getEmployeesWithoutTemplates();
 
   return (
     <div className="space-y-6">
@@ -202,6 +213,14 @@ const WorkScheduleTemplateManager = () => {
           </div>
         </div>
       )}
+
+      {/* Debug Info */}
+      <div className="bg-gray-50 p-4 rounded-md text-sm">
+        <p><strong>Debug Info:</strong></p>
+        <p>Total Employees: {employees.length}</p>
+        <p>Total Templates: {templates.length}</p>
+        <p>Employees without templates: {employeesWithoutTemplates.length}</p>
+      </div>
 
       {/* Template Table */}
       <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
@@ -300,12 +319,17 @@ const WorkScheduleTemplateManager = () => {
                     className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">Choose an employee...</option>
-                    {getEmployeesWithoutTemplates().map(emp => (
+                    {employeesWithoutTemplates.map(emp => (
                       <option key={emp.id} value={emp.id}>
                         {emp.name} ({emp.email})
                       </option>
                     ))}
                   </select>
+                  {employeesWithoutTemplates.length === 0 && (
+                    <p className="text-sm text-gray-500 mt-1">
+                      All employees already have templates
+                    </p>
+                  )}
                 </div>
                 
                 <div className="flex justify-end space-x-3 pt-4">
