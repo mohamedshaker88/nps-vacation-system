@@ -430,6 +430,104 @@ const AdminDashboard = () => {
     }
   };
 
+  // Missing functions for renderRequestForm
+  const renderDateInputs = () => {
+
+    // Single date for Sick Leave and Exchange Off Days
+    if (newRequest.type === 'Sick Leave' || newRequest.type === 'Exchange Off Days') {
+      return (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Date *</label>
+          <input
+            type="date"
+            value={newRequest.startDate}
+            onChange={(e) => {
+              setNewRequest({
+                ...newRequest, 
+                startDate: e.target.value,
+                endDate: e.target.value // Set end date same as start date for single day
+              });
+            }}
+            min={new Date().toISOString().split('T')[0]}
+            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+      );
+    }
+
+    // Date range for other leave types
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Start Date *</label>
+          <input
+            type="date"
+            value={newRequest.startDate}
+            onChange={(e) => setNewRequest({...newRequest, startDate: e.target.value})}
+            min={new Date().toISOString().split('T')[0]}
+            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+        
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">End Date *</label>
+          <input
+            type="date"
+            value={newRequest.endDate}
+            onChange={(e) => setNewRequest({...newRequest, endDate: e.target.value})}
+            min={newRequest.startDate || new Date().toISOString().split('T')[0]}
+            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+      </div>
+    );
+  };
+
+  const renderPartnerInput = () => {
+    return (
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Exchange Partner *</label>
+        <select
+          value={newRequest.exchangePartnerId}
+          onChange={(e) => setNewRequest({...newRequest, exchangePartnerId: e.target.value})}
+          className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="">Select Exchange Partner</option>
+          {employees
+            .filter(emp => emp.id !== parseInt(newRequest.employeeId))
+            .map(emp => (
+              <option key={emp.id} value={emp.id}>
+                {emp.name} ({emp.email})
+              </option>
+            ))
+          }
+        </select>
+        <p className="text-xs text-gray-500 mt-1">
+          Select the person who will cover your shift during your leave
+        </p>
+      </div>
+    );
+  };
+
+  const renderExchangeReason = () => {
+    if (newRequest.type !== 'Exchange Off Days') {
+      return null;
+    }
+
+    return (
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Exchange Reason *</label>
+        <textarea
+          value={newRequest.exchangeReason}
+          onChange={(e) => setNewRequest({...newRequest, exchangeReason: e.target.value})}
+          rows={3}
+          className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="Please provide a reason for the exchange request"
+        />
+      </div>
+    );
+  };
+
   const getDashboardStats = () => {
     const pending = requests.filter(r => r.status === 'Pending').length;
     const approved = requests.filter(r => r.status === 'Approved').length;

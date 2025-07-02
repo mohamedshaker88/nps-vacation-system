@@ -49,18 +49,68 @@ CREATE TABLE IF NOT EXISTS work_schedules (
 -- 4. Create basic function to get employee day status
 CREATE OR REPLACE FUNCTION get_employee_day_status(p_employee_id BIGINT, p_date DATE)
 RETURNS VARCHAR AS $$
+DECLARE
+    day_of_week INTEGER;
+    day_status VARCHAR;
+    week_start DATE;
+    schedule_record RECORD;
 BEGIN
-    -- Default schedule: Mon-Fri working, Sat-Sun off
-    CASE EXTRACT(DOW FROM p_date)
-        WHEN 0 THEN RETURN 'off';    -- Sunday
-        WHEN 1 THEN RETURN 'working'; -- Monday
-        WHEN 2 THEN RETURN 'working'; -- Tuesday
-        WHEN 3 THEN RETURN 'working'; -- Wednesday
-        WHEN 4 THEN RETURN 'working'; -- Thursday
-        WHEN 5 THEN RETURN 'working'; -- Friday
-        WHEN 6 THEN RETURN 'off';    -- Saturday
-        ELSE RETURN 'working';
-    END CASE;
+    -- Get day of week (0=Sunday, 1=Monday, ..., 6=Saturday)
+    day_of_week := EXTRACT(DOW FROM p_date);
+    
+    -- Convert to our format (0=Monday, 1=Tuesday, ..., 6=Sunday)
+    day_of_week := CASE 
+        WHEN day_of_week = 0 THEN 6  -- Sunday
+        ELSE day_of_week - 1         -- Monday=0, Tuesday=1, etc.
+    END;
+    
+    -- Get week start (Monday)
+    week_start := p_date - (day_of_week || ' days')::INTERVAL;
+    
+    -- Check if there's a specific schedule for this week
+    SELECT * INTO schedule_record
+    FROM work_schedules
+    WHERE employee_id = p_employee_id 
+    AND week_start_date = week_start;
+    
+    -- If specific schedule exists, use it
+    IF FOUND THEN
+        CASE day_of_week
+            WHEN 0 THEN day_status := schedule_record.monday_status;
+            WHEN 1 THEN day_status := schedule_record.tuesday_status;
+            WHEN 2 THEN day_status := schedule_record.wednesday_status;
+            WHEN 3 THEN day_status := schedule_record.thursday_status;
+            WHEN 4 THEN day_status := schedule_record.friday_status;
+            WHEN 5 THEN day_status := schedule_record.saturday_status;
+            WHEN 6 THEN day_status := schedule_record.sunday_status;
+        END CASE;
+    ELSE
+        -- Use template
+        SELECT * INTO schedule_record
+        FROM work_schedule_templates
+        WHERE employee_id = p_employee_id 
+        AND is_active = true;
+        
+        IF FOUND THEN
+            CASE day_of_week
+                WHEN 0 THEN day_status := schedule_record.monday_status;
+                WHEN 1 THEN day_status := schedule_record.tuesday_status;
+                WHEN 2 THEN day_status := schedule_record.wednesday_status;
+                WHEN 3 THEN day_status := schedule_record.thursday_status;
+                WHEN 4 THEN day_status := schedule_record.friday_status;
+                WHEN 5 THEN day_status := schedule_record.saturday_status;
+                WHEN 6 THEN day_status := schedule_record.sunday_status;
+            END CASE;
+        ELSE
+            -- Default schedule: Mon-Fri working, Sat-Sun off
+            CASE day_of_week
+                WHEN 0,1,2,3,4 THEN day_status := 'working';
+                WHEN 5,6 THEN day_status := 'off';
+            END CASE;
+        END IF;
+    END IF;
+    
+    RETURN day_status;
 END;
 $$ LANGUAGE plpgsql;
 
