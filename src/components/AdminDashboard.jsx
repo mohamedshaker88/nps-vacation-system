@@ -458,44 +458,44 @@ const AdminDashboard = () => {
         </div>
       )}
       
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="bg-blue-50 p-3 sm:p-4 rounded-lg border border-blue-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-blue-600 text-sm font-medium">Pending Requests</p>
-              <p className="text-2xl font-bold text-blue-800">{stats.pending}</p>
+              <p className="text-blue-600 text-xs sm:text-sm font-medium">Pending Requests</p>
+              <p className="text-xl sm:text-2xl font-bold text-blue-800">{stats.pending}</p>
             </div>
-            <AlertCircle className="h-8 w-8 text-blue-600" />
+            <AlertCircle className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
           </div>
         </div>
         
-        <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+        <div className="bg-green-50 p-3 sm:p-4 rounded-lg border border-green-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-green-600 text-sm font-medium">Approved</p>
-              <p className="text-2xl font-bold text-green-800">{stats.approved}</p>
+              <p className="text-green-600 text-xs sm:text-sm font-medium">Approved</p>
+              <p className="text-xl sm:text-2xl font-bold text-green-800">{stats.approved}</p>
             </div>
-            <CheckCircle className="h-8 w-8 text-green-600" />
+            <CheckCircle className="h-6 w-6 sm:h-8 sm:w-8 text-green-600" />
           </div>
         </div>
         
-        <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+        <div className="bg-purple-50 p-3 sm:p-4 rounded-lg border border-purple-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-purple-600 text-sm font-medium">Total Requests</p>
-              <p className="text-2xl font-bold text-purple-800">{stats.totalRequests}</p>
+              <p className="text-purple-600 text-xs sm:text-sm font-medium">Total Requests</p>
+              <p className="text-xl sm:text-2xl font-bold text-purple-800">{stats.totalRequests}</p>
             </div>
-            <FileText className="h-8 w-8 text-purple-600" />
+            <FileText className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600" />
           </div>
         </div>
         
-        <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
+        <div className="bg-orange-50 p-3 sm:p-4 rounded-lg border border-orange-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-orange-600 text-sm font-medium">Registered Employees</p>
-              <p className="text-2xl font-bold text-orange-800">{employees.length}</p>
+              <p className="text-orange-600 text-xs sm:text-sm font-medium">Registered Employees</p>
+              <p className="text-xl sm:text-2xl font-bold text-orange-800">{employees.length}</p>
             </div>
-            <Users className="h-8 w-8 text-orange-600" />
+            <Users className="h-6 w-6 sm:h-8 sm:w-8 text-orange-600" />
           </div>
         </div>
       </div>
@@ -509,12 +509,12 @@ const AdminDashboard = () => {
             <p className="text-gray-500 text-center py-4">No requests submitted yet</p>
           ) : (
             requests.slice(0, 5).map(request => (
-              <div key={request.id} className="flex items-center justify-between py-3 border-b last:border-b-0">
+              <div key={request.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between py-3 border-b last:border-b-0 gap-2">
                 <div>
-                  <div className="font-medium">{request.employee_name}</div>
-                  <div className="text-sm text-gray-600">{request.type} • {request.start_date} to {request.end_date}</div>
+                  <div className="font-medium text-sm sm:text-base">{request.employee_name}</div>
+                  <div className="text-xs sm:text-sm text-gray-600">{request.type} • {request.start_date} to {request.end_date}</div>
                 </div>
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(request.status)}`}>
+                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(request.status)} self-start sm:self-auto`}>
                   {request.status}
                 </span>
               </div>
@@ -643,11 +643,11 @@ const AdminDashboard = () => {
 
   const renderRequests = () => (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
         <h2 className="text-xl font-semibold">Leave Requests</h2>
         <button
           onClick={() => setShowRequestForm(true)}
-          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center gap-2"
+          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center justify-center gap-2 text-sm sm:text-base"
         >
           <Plus className="h-4 w-4" />
           New Request
@@ -748,22 +748,22 @@ const AdminDashboard = () => {
 
     return (
       <div className="space-y-4">
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
           <h2 className="text-xl font-semibold">Registered Employees</h2>
-          <div className="flex space-x-2">
+          <div className="flex flex-wrap gap-2">
             <button
               onClick={loadData}
-              className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 flex items-center gap-2"
+              className="bg-gray-600 text-white px-3 sm:px-4 py-2 rounded-md hover:bg-gray-700 flex items-center justify-center gap-2 text-xs sm:text-sm"
               disabled={loading}
             >
-              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`h-3 w-3 sm:h-4 sm:w-4 ${loading ? 'animate-spin' : ''}`} />
               Refresh
             </button>
             <button
               onClick={() => setShowEmployeeForm(true)}
-              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center gap-2"
+              className="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-md hover:bg-blue-700 flex items-center justify-center gap-2 text-xs sm:text-sm"
             >
-              <Plus className="h-4 w-4" />
+              <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
               Add Employee
             </button>
           </div>
@@ -871,13 +871,13 @@ const AdminDashboard = () => {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Annual Leave</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sick Leave</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joined</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee</th>
+                  <th className="hidden sm:table-cell px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                  <th className="hidden lg:table-cell px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Annual Leave</th>
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sick Leave</th>
+                  <th className="hidden md:table-cell px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joined</th>
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -912,10 +912,10 @@ const AdminDashboard = () => {
 
                     return (
                       <tr key={employee.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
-                            <User className="h-5 w-5 text-gray-400 mr-2" />
-                            <div className="text-sm font-medium text-gray-900">
+                            <User className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400 mr-2" />
+                            <div className="text-xs sm:text-sm font-medium text-gray-900">
                               {editingEmployee?.id === employee.id ? (
                                 <input
                                   type="text"
@@ -929,31 +929,31 @@ const AdminDashboard = () => {
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <td className="hidden sm:table-cell px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
                           {editingEmployee?.id === employee.id ? (
                             <input
                               type="email"
                               value={editingEmployee.email}
                               onChange={(e) => setEditingEmployee({...editingEmployee, email: e.target.value})}
-                              className="border border-gray-300 rounded px-2 py-1 text-sm"
+                              className="border border-gray-300 rounded px-2 py-1 text-xs sm:text-sm"
                             />
                           ) : (
                             employee.email
                           )}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <td className="hidden lg:table-cell px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
                           {editingEmployee?.id === employee.id ? (
                             <input
                               type="tel"
                               value={editingEmployee.phone}
                               onChange={(e) => setEditingEmployee({...editingEmployee, phone: e.target.value})}
-                              className="border border-gray-300 rounded px-2 py-1 text-sm"
+                              className="border border-gray-300 rounded px-2 py-1 text-xs sm:text-sm"
                             />
                           ) : (
                             employee.phone
                           )}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                           {editingVacation?.id === employee.id ? (
                             <div className="space-y-2">
                               <div className="text-xs font-medium text-gray-700">Annual Leave</div>
@@ -996,7 +996,7 @@ const AdminDashboard = () => {
                             </div>
                           )}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                           {editingVacation?.id === employee.id ? (
                             <div className="space-y-2">
                               <div className="text-xs font-medium text-gray-700">Sick Leave</div>
@@ -1039,10 +1039,10 @@ const AdminDashboard = () => {
                             </div>
                           )}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="hidden md:table-cell px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
                           {new Date(employee.created_at).toLocaleDateString()}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm font-medium space-x-1 sm:space-x-2">
                           {editingEmployee?.id === employee.id ? (
                             <>
                               <button
@@ -1050,14 +1050,14 @@ const AdminDashboard = () => {
                                 className="text-green-600 hover:text-green-900"
                                 title="Save changes"
                               >
-                                <Save className="h-4 w-4" />
+                                <Save className="h-3 w-3 sm:h-4 sm:w-4" />
                               </button>
                               <button
                                 onClick={() => setEditingEmployee(null)}
                                 className="text-gray-600 hover:text-gray-900"
                                 title="Cancel edit"
                               >
-                                <X className="h-4 w-4" />
+                                <X className="h-3 w-3 sm:h-4 sm:w-4" />
                               </button>
                             </>
                           ) : editingVacation?.id === employee.id ? (
@@ -1067,14 +1067,14 @@ const AdminDashboard = () => {
                                 className="text-green-600 hover:text-green-900"
                                 title="Save vacation balance"
                               >
-                                <Save className="h-4 w-4" />
+                                <Save className="h-3 w-3 sm:h-4 sm:w-4" />
                               </button>
                               <button
                                 onClick={() => setEditingVacation(null)}
                                 className="text-gray-600 hover:text-gray-900"
                                 title="Cancel edit"
                               >
-                                <X className="h-4 w-4" />
+                                <X className="h-3 w-3 sm:h-4 sm:w-4" />
                               </button>
                             </>
                           ) : (
@@ -1084,21 +1084,21 @@ const AdminDashboard = () => {
                                 className="text-blue-600 hover:text-blue-900"
                                 title="Edit employee"
                               >
-                                <Edit className="h-4 w-4" />
+                                <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
                               </button>
                               <button
                                 onClick={() => setEditingVacation(employee)}
                                 className="text-purple-600 hover:text-purple-900"
                                 title="Edit vacation balance"
                               >
-                                <Calendar className="h-4 w-4" />
+                                <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
                               </button>
                               <button
                                 onClick={() => handleDeleteEmployee(employee.id)}
                                 className="text-red-600 hover:text-red-900"
                                 title="Delete employee"
                               >
-                                <Trash2 className="h-4 w-4" />
+                                <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
                               </button>
                             </>
                           )}
@@ -1245,21 +1245,21 @@ const AdminDashboard = () => {
     <div className="min-h-screen bg-gray-50">
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-4 gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">NPS Team - Admin Dashboard</h1>
-              <p className="text-sm text-gray-600">Vacation Management System • 24/7 Coverage</p>
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">NPS Team - Admin Dashboard</h1>
+              <p className="text-xs sm:text-sm text-gray-600">Vacation Management System • 24/7 Coverage</p>
             </div>
-            <div className="flex items-center space-x-4">
-              <div className="text-sm text-gray-600">
-                <Clock className="inline h-4 w-4 mr-1" />
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+              <div className="text-xs sm:text-sm text-gray-600">
+                <Clock className="inline h-3 w-3 sm:h-4 sm:w-4 mr-1" />
                 5:00 PM - 1:00 AM Daily
               </div>
               <button
                 onClick={handleLogout}
-                className="flex items-center px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md"
+                className="flex items-center justify-center px-3 py-2 text-xs sm:text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md"
               >
-                <LogOut className="h-4 w-4 mr-1" />
+                <LogOut className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
                 Logout
               </button>
             </div>
@@ -1267,8 +1267,8 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="flex space-x-1 mb-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+        <div className="flex flex-wrap gap-1 sm:gap-2 mb-4 sm:mb-6">
           {[
             { id: 'dashboard', label: 'Dashboard', icon: Calendar },
             { id: 'requests', label: 'Requests', icon: FileText },
@@ -1278,13 +1278,13 @@ const AdminDashboard = () => {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium ${
+              className={`flex items-center px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium ${
                 activeTab === tab.id
                   ? 'bg-blue-600 text-white'
                   : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
               }`}
             >
-              <tab.icon className="h-4 w-4 mr-2" />
+              <tab.icon className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
               {tab.label}
             </button>
           ))}
