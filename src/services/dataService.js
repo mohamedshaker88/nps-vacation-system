@@ -82,14 +82,53 @@ export const dataService = {
 
   // Request operations
   async saveRequest(request) {
+    console.log('Saving request:', request)
+    
+    // Ensure employee_id is set by looking up the email
+    if (!request.employee_id && request.employee_email) {
+      try {
+        const employee = await this.getEmployeeByEmail(request.employee_email)
+        if (employee) {
+          request.employee_id = employee.id
+        }
+      } catch (error) {
+        console.error('Error getting employee ID:', error)
+      }
+    }
+    
+    // Set default values for required fields if missing
+    const requestData = {
+      ...request,
+      // Ensure required fields have values
+      employee_name: request.employee_name || 'Unknown Employee',
+      employee_email: request.employee_email || 'unknown@company.com',
+      type: request.type || 'Annual Leave',
+      start_date: request.start_date || new Date().toISOString().split('T')[0],
+      end_date: request.end_date || new Date().toISOString().split('T')[0],
+      reason: request.reason || 'No reason provided',
+      status: request.status || 'Pending',
+      days: request.days || 1,
+      // Set defaults for optional fields
+      coverage_arranged: request.coverage_arranged || false,
+      medical_certificate: request.medical_certificate || false,
+      requires_partner_approval: request.requires_partner_approval || false,
+      submit_date: request.submit_date || new Date().toISOString().split('T')[0]
+    }
+    
+    console.log('Final request data:', requestData)
+    
     const { data, error } = await supabase
       .from('requests')
-      .insert([request])
+      .insert([requestData])
       .select()
     
-    if (error) throw error
+    if (error) {
+      console.error('Insert error:', error)
+      throw error
+    }
     
     const savedRequest = data[0]
+    console.log('Request saved successfully:', savedRequest)
     
     // Manually create notification for exchange partner if needed
     if (savedRequest.exchange_partner_id) {
