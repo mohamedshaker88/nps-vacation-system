@@ -132,15 +132,18 @@ const AdminDashboard = () => {
     }
 
     try {
-      const updatedEmployee = await dataService.updateEmployee(editingEmployee.id, {
+      await dataService.updateEmployee(editingEmployee.id, {
         name: editingEmployee.name,
         email: editingEmployee.email,
         phone: editingEmployee.phone
       });
-      setEmployees(employees.map(emp => 
-        emp.id === editingEmployee.id ? updatedEmployee : emp
-      ));
+      
+      // Refresh employee data from database to ensure consistency
+      const updatedEmployees = await dataService.getEmployees();
+      setEmployees(updatedEmployees);
+      
       setEditingEmployee(null);
+      alert('Employee updated successfully!');
     } catch (error) {
       console.error('Error updating employee:', error);
       alert('Error updating employee. Please try again.');
@@ -174,17 +177,9 @@ const AdminDashboard = () => {
         editingVacation.sick_leave_total
       );
       
-      // Update local state
-      setEmployees(employees.map(emp => 
-        emp.id === editingVacation.id 
-          ? { ...emp, 
-              annual_leave_remaining: editingVacation.annual_leave_remaining,
-              sick_leave_remaining: editingVacation.sick_leave_remaining,
-              annual_leave_total: editingVacation.annual_leave_total,
-              sick_leave_total: editingVacation.sick_leave_total
-            }
-          : emp
-      ));
+      // Refresh employee data from database to ensure consistency
+      const updatedEmployees = await dataService.getEmployees();
+      setEmployees(updatedEmployees);
       
       setEditingVacation(null);
       alert('Vacation balance updated successfully!');
