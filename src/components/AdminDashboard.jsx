@@ -286,18 +286,24 @@ const AdminDashboard = () => {
   };
 
   const handleSubmitRequest = async () => {
-    if (!newRequest.employeeId || !newRequest.type || !newRequest.startDate || !newRequest.endDate) {
-      alert('Please fill in all required fields');
+    if (!newRequest.employeeId || !newRequest.type || !newRequest.startDate || !newRequest.endDate || !newRequest.exchangePartnerId) {
+      alert('Please fill in all required fields including the coverage partner');
       return;
     }
 
     const employee = employees.find(emp => emp.id === parseInt(newRequest.employeeId));
     const days = calculateDays(newRequest.startDate, newRequest.endDate);
 
+    // Validate that exchange partner is selected for all leave types
+    if (!newRequest.exchangePartnerId) {
+      alert('Please select a coverage partner for the leave request');
+      return;
+    }
+
     // Additional validation for exchange requests
     if (newRequest.type === 'Exchange Off Days') {
-      if (!newRequest.exchangeDate || !newRequest.exchangePartnerId || !newRequest.exchangeReason) {
-        alert('Please fill in all exchange request fields');
+      if (!newRequest.exchangeReason) {
+        alert('Please provide a reason for the exchange request');
         return;
       }
 
@@ -336,15 +342,16 @@ const AdminDashboard = () => {
       reason: newRequest.reason,
       status: 'Pending',
       submit_date: new Date().toISOString().split('T')[0],
-      coverage_arranged: !!newRequest.coverageBy,
+      coverage_arranged: !!newRequest.exchangePartnerId,
       coverage_by: newRequest.coverageBy,
       medical_certificate: newRequest.medicalCertificate,
       emergency_contact: newRequest.emergencyContact,
       additional_notes: newRequest.additionalNotes,
-      exchange_from_date: newRequest.exchangeDate,
-      exchange_to_date: newRequest.exchangeDate,
-      exchange_reason: newRequest.exchangeReason,
-      exchange_partner_id: newRequest.exchangePartnerId ? parseInt(newRequest.exchangePartnerId) : null
+      exchange_from_date: newRequest.startDate, // Use start date for all types
+      exchange_to_date: newRequest.endDate, // Use end date for all types
+      exchange_reason: newRequest.exchangeReason || newRequest.reason, // Use exchange reason or fallback to main reason
+      exchange_partner_id: parseInt(newRequest.exchangePartnerId),
+      requires_partner_approval: true // All requests now require partner approval
     };
 
     try {
@@ -373,6 +380,25 @@ const AdminDashboard = () => {
 
   const updateRequestStatus = async (id, status) => {
     try {
+      const request = requests.find(req => req.id === id);
+      
+      // Check if request requires partner approval and hasn't been approved yet
+      if (request && request.requires_partner_approval && request.exchange_partner_id && status === 'Approved') {
+        // Check if partner has approved
+        const partnerApprovals = await dataService.getPendingExchangeApprovals(request.exchange_partner_id);
+        const thisRequestApproval = partnerApprovals.find(approval => approval.request_id === id);
+        
+        if (!thisRequestApproval || thisRequestApproval.status === 'pending') {
+          alert('This request requires partner approval before it can be approved. The exchange partner must approve the request first.');
+          return;
+        }
+        
+        if (thisRequestApproval.status === 'rejected') {
+          alert('This request was rejected by the exchange partner and cannot be approved.');
+          return;
+        }
+      }
+      
       await dataService.updateRequestStatus(id, status);
       setRequests(requests.map(req => 
         req.id === id ? { ...req, status } : req
@@ -716,56 +742,34 @@ const AdminDashboard = () => {
           />
         </div>
 
-        {leaveTypes.find(type => type.value === newRequest.type)?.isExchange ? (
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Exchange Date *</label>
-                <input
-                  type="date"
-                  value={newRequest.exchangeDate}
-                  onChange={(e) => setNewRequest({...newRequest, exchangeDate: e.target.value})}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Exchange Partner *</label>
-                <select
-                  value={newRequest.exchangePartnerId}
-                  onChange={(e) => setNewRequest({...newRequest, exchangePartnerId: e.target.value})}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Select Exchange Partner</option>
-                  {employees.filter(emp => emp.id !== parseInt(newRequest.employeeId)).map(emp => (
-                    <option key={emp.id} value={emp.id}>{emp.name} ({emp.email})</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Exchange Reason *</label>
-              <textarea
-                value={newRequest.exchangeReason}
-                onChange={(e) => setNewRequest({...newRequest, exchangeReason: e.target.value})}
-                rows={3}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Please explain why you need to exchange this off day"
-              />
-            </div>
-          </div>
-        ) : (
+        {/* Exchange Partner Selection - Required for all leave types */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            {newRequest.type === 'Exchange Off Days' ? 'Exchange Partner *' : 'Coverage Partner *'}
+          </label>
+          <select
+            value={newRequest.exchangePartnerId}
+            onChange={(e) => setNewRequest({...newRequest, exchangePartnerId: e.target.value})}
+            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">Select {newRequest.type === 'Exchange Off Days' ? 'Exchange' : 'Coverage'} Partner</option>
+            {employees.filter(emp => emp.id !== parseInt(newRequest.employeeId)).map(emp => (
+              <option key={emp.id} value={emp.id}>{emp.name} ({emp.email})</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Exchange-specific fields for Exchange Off Days */}
+        {newRequest.type === 'Exchange Off Days' && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Coverage Arranged With</label>
-            <select
-              value={newRequest.coverageBy}
-              onChange={(e) => setNewRequest({...newRequest, coverageBy: e.target.value})}
+            <label className="block text-sm font-medium text-gray-700 mb-1">Exchange Reason *</label>
+            <textarea
+              value={newRequest.exchangeReason}
+              onChange={(e) => setNewRequest({...newRequest, exchangeReason: e.target.value})}
+              rows={3}
               className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Select Coverage Person</option>
-              {employees.filter(emp => emp.id !== parseInt(newRequest.employeeId)).map(emp => (
-                <option key={emp.id} value={emp.name}>{emp.name}</option>
-              ))}
-            </select>
+              placeholder="Please explain why you need to exchange this off day"
+            />
           </div>
         )}
 
