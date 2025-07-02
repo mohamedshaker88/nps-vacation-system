@@ -210,7 +210,9 @@ const EmployeePortal = () => {
       setUnreadCount(unreadNotifications);
       
       // Load pending exchange approvals
+      console.log('Loading pending approvals for employee:', employee.id, employee.name);
       const pendingApprovals = await dataService.getPendingExchangeApprovals(employee.id);
+      console.log('Pending approvals loaded:', pendingApprovals);
       setPendingExchangeApprovals(pendingApprovals);
     } catch (error) {
       console.error('Error loading employee data:', error);
