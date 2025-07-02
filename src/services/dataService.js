@@ -53,12 +53,14 @@ export const dataService = {
     return data[0]
   },
 
-  async updateEmployeeVacationBalance(id, annualLeaveRemaining, sickLeaveRemaining) {
+  async updateEmployeeVacationBalance(id, annualLeaveRemaining, sickLeaveRemaining, annualLeaveTotal, sickLeaveTotal) {
     const { data, error } = await supabase
       .from('employees')
       .update({ 
         annual_leave_remaining: annualLeaveRemaining,
-        sick_leave_remaining: sickLeaveRemaining
+        sick_leave_remaining: sickLeaveRemaining,
+        annual_leave_total: annualLeaveTotal,
+        sick_leave_total: sickLeaveTotal
       })
       .eq('id', id)
       .select()
@@ -175,12 +177,14 @@ export const dataService = {
     if (content.entitlements) {
       const { annualLeave, sickLeave } = content.entitlements;
       
-      // Update all employees with new balances
+      // Update all employees with new balances and totals
       const { error: updateError } = await supabase
         .from('employees')
         .update({ 
           annual_leave_remaining: annualLeave,
-          sick_leave_remaining: sickLeave
+          sick_leave_remaining: sickLeave,
+          annual_leave_total: annualLeave,
+          sick_leave_total: sickLeave
         });
       
       if (updateError) {

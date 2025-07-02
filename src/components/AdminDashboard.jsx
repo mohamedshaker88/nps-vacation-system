@@ -169,7 +169,9 @@ const AdminDashboard = () => {
       await dataService.updateEmployeeVacationBalance(
         editingVacation.id,
         editingVacation.annual_leave_remaining,
-        editingVacation.sick_leave_remaining
+        editingVacation.sick_leave_remaining,
+        editingVacation.annual_leave_total,
+        editingVacation.sick_leave_total
       );
       
       // Update local state
@@ -177,7 +179,9 @@ const AdminDashboard = () => {
         emp.id === editingVacation.id 
           ? { ...emp, 
               annual_leave_remaining: editingVacation.annual_leave_remaining,
-              sick_leave_remaining: editingVacation.sick_leave_remaining 
+              sick_leave_remaining: editingVacation.sick_leave_remaining,
+              annual_leave_total: editingVacation.annual_leave_total,
+              sick_leave_total: editingVacation.sick_leave_total
             }
           : emp
       ));
@@ -951,42 +955,42 @@ const AdminDashboard = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           {editingVacation?.id === employee.id ? (
-                            <div className="space-y-1">
-                              <div className="flex items-center space-x-2">
-                                <input
-                                  type="number"
-                                  value={editingVacation.annual_leave_remaining}
-                                  onChange={(e) => setEditingVacation({...editingVacation, annual_leave_remaining: parseInt(e.target.value) || 0})}
-                                  className="w-16 border border-gray-300 rounded px-2 py-1 text-sm"
-                                  min="0"
-                                  max="30"
-                                />
-                                <span className="text-xs text-gray-500">/ {policy?.entitlements?.annualLeave || 15}</span>
-                              </div>
-                              <div className="flex space-x-1">
-                                <button
-                                  onClick={handleUpdateVacationBalance}
-                                  className="text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700"
-                                >
-                                  Save
-                                </button>
-                                <button
-                                  onClick={() => setEditingVacation(null)}
-                                  className="text-xs bg-gray-600 text-white px-2 py-1 rounded hover:bg-gray-700"
-                                >
-                                  Cancel
-                                </button>
+                            <div className="space-y-2">
+                              <div className="text-xs font-medium text-gray-700">Annual Leave</div>
+                              <div className="space-y-1">
+                                <div className="flex items-center space-x-2">
+                                  <label className="text-xs text-gray-500">Remaining:</label>
+                                  <input
+                                    type="number"
+                                    value={editingVacation.annual_leave_remaining}
+                                    onChange={(e) => setEditingVacation({...editingVacation, annual_leave_remaining: parseInt(e.target.value) || 0})}
+                                    className="w-16 border border-gray-300 rounded px-2 py-1 text-xs"
+                                    min="0"
+                                    max="30"
+                                  />
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <label className="text-xs text-gray-500">Total Allowed:</label>
+                                  <input
+                                    type="number"
+                                    value={editingVacation.annual_leave_total || (policy?.entitlements?.annualLeave || 15)}
+                                    onChange={(e) => setEditingVacation({...editingVacation, annual_leave_total: parseInt(e.target.value) || 15})}
+                                    className="w-16 border border-gray-300 rounded px-2 py-1 text-xs"
+                                    min="0"
+                                    max="30"
+                                  />
+                                </div>
                               </div>
                             </div>
                           ) : (
                             <div>
                               <div className="text-sm text-gray-900">
-                                {annualRemaining} / {policy?.entitlements?.annualLeave || 15} remaining
+                                {annualRemaining} / {employee.annual_leave_total || policy?.entitlements?.annualLeave || 15} remaining
                               </div>
                               <div className="w-24 bg-gray-200 rounded-full h-2">
                                 <div 
                                   className="bg-blue-600 h-2 rounded-full" 
-                                  style={{width: `${((policy?.entitlements?.annualLeave || 15) - annualRemaining) / (policy?.entitlements?.annualLeave || 15) * 100}%`}}
+                                  style={{width: `${((employee.annual_leave_total || policy?.entitlements?.annualLeave || 15) - annualRemaining) / (employee.annual_leave_total || policy?.entitlements?.annualLeave || 15) * 100}%`}}
                                 ></div>
                               </div>
                             </div>
@@ -994,28 +998,42 @@ const AdminDashboard = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           {editingVacation?.id === employee.id ? (
-                            <div className="space-y-1">
-                              <div className="flex items-center space-x-2">
-                                <input
-                                  type="number"
-                                  value={editingVacation.sick_leave_remaining}
-                                  onChange={(e) => setEditingVacation({...editingVacation, sick_leave_remaining: parseInt(e.target.value) || 0})}
-                                  className="w-16 border border-gray-300 rounded px-2 py-1 text-sm"
-                                  min="0"
-                                  max="30"
-                                />
-                                <span className="text-xs text-gray-500">/ {policy?.entitlements?.sickLeave || 10}</span>
+                            <div className="space-y-2">
+                              <div className="text-xs font-medium text-gray-700">Sick Leave</div>
+                              <div className="space-y-1">
+                                <div className="flex items-center space-x-2">
+                                  <label className="text-xs text-gray-500">Remaining:</label>
+                                  <input
+                                    type="number"
+                                    value={editingVacation.sick_leave_remaining}
+                                    onChange={(e) => setEditingVacation({...editingVacation, sick_leave_remaining: parseInt(e.target.value) || 0})}
+                                    className="w-16 border border-gray-300 rounded px-2 py-1 text-xs"
+                                    min="0"
+                                    max="30"
+                                  />
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <label className="text-xs text-gray-500">Total Allowed:</label>
+                                  <input
+                                    type="number"
+                                    value={editingVacation.sick_leave_total || (policy?.entitlements?.sickLeave || 10)}
+                                    onChange={(e) => setEditingVacation({...editingVacation, sick_leave_total: parseInt(e.target.value) || 10})}
+                                    className="w-16 border border-gray-300 rounded px-2 py-1 text-xs"
+                                    min="0"
+                                    max="30"
+                                  />
+                                </div>
                               </div>
                             </div>
                           ) : (
                             <div>
                               <div className="text-sm text-gray-900">
-                                {sickRemaining} / {policy?.entitlements?.sickLeave || 10} remaining
+                                {sickRemaining} / {employee.sick_leave_total || policy?.entitlements?.sickLeave || 10} remaining
                               </div>
                               <div className="w-24 bg-gray-200 rounded-full h-2">
                                 <div 
                                   className="bg-green-600 h-2 rounded-full" 
-                                  style={{width: `${((policy?.entitlements?.sickLeave || 10) - sickRemaining) / (policy?.entitlements?.sickLeave || 10) * 100}%`}}
+                                  style={{width: `${((employee.sick_leave_total || policy?.entitlements?.sickLeave || 10) - sickRemaining) / (employee.sick_leave_total || policy?.entitlements?.sickLeave || 10) * 100}%`}}
                                 ></div>
                               </div>
                             </div>
