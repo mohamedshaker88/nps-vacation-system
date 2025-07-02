@@ -520,6 +520,18 @@ export const dataService = {
       .rpc('can_admin_approve_request', { p_request_id: requestId })
     
     if (error) throw error
-    return data[0] || { can_approve: false, reason: 'Error checking approval status' }
+    
+    const result = data[0] || { can_approve: false, reason: 'Error checking approval status' }
+    console.log('Admin approval check result:', result)
+    return result
+  },
+
+  // Add helper function to get detailed exchange request status
+  async getExchangeRequestStatus(requestId) {
+    const { data, error } = await supabase
+      .rpc('get_exchange_request_status', { p_request_id: requestId })
+    
+    if (error) throw error
+    return data || {}
   }
 } 

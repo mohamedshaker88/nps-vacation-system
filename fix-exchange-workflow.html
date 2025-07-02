@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Fix Exchange Workflow</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .log { background: #f5f5f5; padding: 10px; margin: 10px 0; font-family: monospace; white-space: pre-wrap; }
+        .success { background: #e7f5e7; border-color: #4caf50; }
+        .error { background: #ffebee; border-color: #f44336; }
+        button { padding: 8px 16px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .status-good { color: #4caf50; font-weight: bold; }
+        .status-bad { color: #f44336; font-weight: bold; }
+        .status-warning { color: #ff9800; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>Exchange Workflow Fix & Test</h1>
+    
+    <div class="section">
+        <h2>Connection Status</h2>
+        <div id="connectionStatus">Connecting...</div>
+    </div>
+    
+    <div class="section">
+        <h2>Actions</h2>
+        <button onclick="runSQLFixes()">1. Run SQL Fixes</button>
+        <button onclick="checkRequestStatus()">2. Check Request Status</button>
+        <button onclick="fixBrokenRequests()">3. Fix Broken Requests</button>
+        <button onclick="testAdminApproval()">4. Test Admin Approval</button>
+        <button onclick="enableBidirectionalExchange()">5. Enable Bidirectional Exchange</button>
+        <button onclick="testBidirectionalSwap()">6. Test Bidirectional Swap</button>
+    </div>
+    
+    <div class="section">
+        <h2>Current Exchange Requests</h2>
+        <div id="requestsStatus">Click "Check Request Status" to load...</div>
+    </div>
+    
+    <div class="section">
+        <h2>Logs</h2>
+        <div id="logs" class="log"></div>
+    </div>
+
+    <script>
+        // Initialize Supabase
+        const supabaseUrl = 'https://wcnxwlzpmnqijmbqzyqb.supabase.co'
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indjbnh3bHpwbW5xaWptYnF6eXFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzA5Nzc5MTQsImV4cCI6MjA0NjU1MzkxNH0.lNFKa_Fz74QOOaH61mXM0JXMgI0IwfPH2Q0N4BuKFmc'
+        
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey)
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toISOString()
+            const logElement = document.getElementById('logs')
+            const color = type === 'error' ? 'red' : type === 'success' ? 'green' : 'blue'
+            logElement.innerHTML += `<span style="color: ${color};">[${timestamp}] ${message}</span>\n`
+            logElement.scrollTop = logElement.scrollHeight
+            console.log(message)
+        }
+
+        // Test connection
+        async function testConnection() {
+            try {
+                const { data, error } = await supabase.from('employees').select('count').limit(1)
+                if (error) throw error
+                document.getElementById('connectionStatus').innerHTML = '<span class="status-good">✅ Connected to Supabase</span>'
+                log('Successfully connected to Supabase', 'success')
+            } catch (error) {
+                document.getElementById('connectionStatus').innerHTML = '<span class="status-bad">❌ Connection failed</span>'
+                log('Connection failed: ' + error.message, 'error')
+            }
+        }
+
+        // Run SQL fixes
+        async function runSQLFixes() {
+            log('🔧 Running SQL fixes...')
+            
+            try {
+                // 1. Fix the approve_exchange_request function
+                const { data: data1, error: error1 } = await supabase.rpc('sql', {
+                    query: `
+                        CREATE OR REPLACE FUNCTION approve_exchange_request(
+                            p_request_id INTEGER,
+                            p_employee_id INTEGER,
+                            p_approved BOOLEAN,
+                            p_notes TEXT DEFAULT NULL
+                        ) RETURNS JSONB AS $$
+                        DECLARE
+                            request_row requests%ROWTYPE;
+                        BEGIN
+                            SELECT * INTO request_row FROM requests WHERE id = p_request_id;
+                            
+                            IF request_row.id IS NULL THEN
+                                RETURN jsonb_build_object('success', false, 'message', 'Request not found');
+                            END IF;
+                            
+                            IF request_row.exchange_partner_id != p_employee_id THEN
+                                RETURN jsonb_build_object('success', false, 'message', 'You are not the exchange partner');
+                            END IF;
+                            
+                            IF request_row.exchange_partner_approved IS NOT NULL THEN
+                                RETURN jsonb_build_object('success', false, 'message', 'Already responded');
+                            END IF;
+                            
+                            UPDATE requests 
+                            SET 
+                                exchange_partner_approved = p_approved,
+                                exchange_partner_approved_at = NOW(),
+                                exchange_partner_notes = p_notes,
+                                status = CASE 
+                                    WHEN p_approved = true THEN 'Partner Approved'
+                                    ELSE 'Rejected'
+                                END
+                            WHERE id = p_request_id;
+                            
+                            RETURN jsonb_build_object('success', true, 'new_status', 
+                                CASE WHEN p_approved THEN 'Partner Approved' ELSE 'Rejected' END);
+                        END;
+                        $$ LANGUAGE plpgsql;
+                    `
+                })
+                
+                if (error1) {
+                    log('❌ Error creating approve_exchange_request function: ' + error1.message, 'error')
+                } else {
+                    log('✅ Successfully updated approve_exchange_request function', 'success')
+                }
+                
+            } catch (error) {
+                log('❌ Error running SQL fixes: ' + error.message, 'error')
+            }
+        }
+
+        // Check current request status
+        async function checkRequestStatus() {
+            log('📋 Checking exchange request status...')
+            
+            try {
+                const { data: requests, error } = await supabase
+                    .from('requests')
+                    .select(`
+                        id, employee_name, start_date, status, type,
+                        exchange_partner_id, exchange_partner_approved, 
+                        exchange_partner_approved_at
+                    `)
+                    .eq('type', 'Exchange Off Days')
+                    .order('created_at', { ascending: false })
+                
+                if (error) throw error
+                
+                let statusHtml = '<h3>Exchange Requests:</h3>'
+                
+                if (requests.length === 0) {
+                    statusHtml += '<p>No exchange requests found.</p>'
+                } else {
+                    statusHtml += '<table border="1" style="width:100%; border-collapse: collapse;">'
+                    statusHtml += '<tr><th>ID</th><th>Employee</th><th>Date</th><th>Status</th><th>Partner ID</th><th>Partner Approved</th><th>Workflow Status</th></tr>'
+                    
+                    for (const req of requests) {
+                        const partnerApproved = req.exchange_partner_approved
+                        const workflowStatus = 
+                            req.exchange_partner_id === null ? 'Not exchange request' :
+                            partnerApproved === null ? 'Waiting for partner' :
+                            partnerApproved === true && req.status === 'Pending' ? '⚠️ NEEDS STATUS FIX' :
+                            partnerApproved === true && req.status === 'Partner Approved' ? '✅ Ready for admin' :
+                            partnerApproved === false ? '❌ Partner rejected' :
+                            '❓ Unknown state'
+                        
+                        const statusClass = workflowStatus.includes('NEEDS STATUS FIX') ? 'status-warning' :
+                                          workflowStatus.includes('Ready for admin') ? 'status-good' :
+                                          workflowStatus.includes('rejected') ? 'status-bad' : ''
+                        
+                        statusHtml += `<tr>
+                            <td>${req.id}</td>
+                            <td>${req.employee_name}</td>
+                            <td>${req.start_date}</td>
+                            <td>${req.status}</td>
+                            <td>${req.exchange_partner_id || 'N/A'}</td>
+                            <td>${partnerApproved === null ? 'Pending' : partnerApproved ? 'Yes' : 'No'}</td>
+                            <td class="${statusClass}">${workflowStatus}</td>
+                        </tr>`
+                    }
+                    statusHtml += '</table>'
+                }
+                
+                document.getElementById('requestsStatus').innerHTML = statusHtml
+                log(`Found ${requests.length} exchange requests`, 'success')
+                
+            } catch (error) {
+                log('❌ Error checking request status: ' + error.message, 'error')
+            }
+        }
+
+        // Fix broken requests
+        async function fixBrokenRequests() {
+            log('🔧 Fixing broken request statuses...')
+            
+            try {
+                // Update requests where partner approved but status is still Pending
+                const { data, error } = await supabase
+                    .from('requests')
+                    .update({ status: 'Partner Approved' })
+                    .eq('exchange_partner_approved', true)
+                    .eq('status', 'Pending')
+                    .not('exchange_partner_id', 'is', null)
+                    .select()
+                
+                if (error) throw error
+                
+                if (data.length > 0) {
+                    log(`✅ Fixed ${data.length} requests with incorrect status`, 'success')
+                    data.forEach(req => {
+                        log(`  - Request ${req.id}: ${req.employee_name} - Status updated to Partner Approved`)
+                    })
+                } else {
+                    log('ℹ️ No broken requests found to fix')
+                }
+                
+                // Refresh the status display
+                await checkRequestStatus()
+                
+            } catch (error) {
+                log('❌ Error fixing broken requests: ' + error.message, 'error')
+            }
+        }
+
+        // Test admin approval function
+        async function testAdminApproval() {
+            log('🧪 Testing admin approval function...')
+            
+            try {
+                // Get all exchange requests and test approval function on each
+                const { data: requests, error: reqError } = await supabase
+                    .from('requests')
+                    .select('id, employee_name, status, exchange_partner_approved')
+                    .eq('type', 'Exchange Off Days')
+                
+                if (reqError) throw reqError
+                
+                for (const req of requests) {
+                    try {
+                        const { data: approvalData, error: approvalError } = await supabase
+                            .rpc('can_admin_approve_request', { p_request_id: req.id })
+                        
+                        if (approvalError) {
+                            log(`❌ Error testing approval for request ${req.id}: ${approvalError.message}`, 'error')
+                        } else {
+                            const result = approvalData[0] || { can_approve: false, reason: 'No result' }
+                            const symbol = result.can_approve ? '✅' : '❌'
+                            log(`${symbol} Request ${req.id} (${req.employee_name}): ${result.can_approve ? 'CAN' : 'CANNOT'} approve - ${result.reason}`)
+                        }
+                    } catch (err) {
+                        log(`❌ Exception testing request ${req.id}: ${err.message}`, 'error')
+                    }
+                }
+                
+            } catch (error) {
+                log('❌ Error testing admin approval: ' + error.message, 'error')
+            }
+        }
+
+        // Enable bidirectional exchange
+        async function enableBidirectionalExchange() {
+            log('🔄 Enabling bidirectional exchange system...')
+            
+            try {
+                // Run the bidirectional exchange SQL
+                const sqlFunctions = [
+                    // Bidirectional swap function
+                    `CREATE OR REPLACE FUNCTION swap_work_schedules_bidirectional(
+                        p_employee1_id BIGINT,
+                        p_employee2_id BIGINT, 
+                        p_employee1_date DATE,
+                        p_employee2_date DATE
+                    ) RETURNS JSONB AS $$
+                    DECLARE
+                        emp1_week_start DATE;
+                        emp2_week_start DATE;
+                        emp1_day_of_week INTEGER;
+                        emp2_day_of_week INTEGER;
+                        emp1_day_column VARCHAR(20);
+                        emp2_day_column VARCHAR(20);
+                        emp1_schedule_id BIGINT;
+                        emp2_schedule_id BIGINT;
+                        emp1_original_status VARCHAR(20);
+                        emp2_original_status VARCHAR(20);
+                        result JSONB;
+                    BEGIN
+                        emp1_day_of_week := EXTRACT(DOW FROM p_employee1_date);
+                        emp2_day_of_week := EXTRACT(DOW FROM p_employee2_date);
+                        
+                        IF emp1_day_of_week = 0 THEN emp1_day_of_week := 7; END IF;
+                        IF emp2_day_of_week = 0 THEN emp2_day_of_week := 7; END IF;
+                        
+                        emp1_week_start := p_employee1_date - (emp1_day_of_week - 1);
+                        emp2_week_start := p_employee2_date - (emp2_day_of_week - 1);
+                        
+                        emp1_day_column := CASE emp1_day_of_week
+                            WHEN 1 THEN 'monday_status'
+                            WHEN 2 THEN 'tuesday_status'
+                            WHEN 3 THEN 'wednesday_status'
+                            WHEN 4 THEN 'thursday_status'
+                            WHEN 5 THEN 'friday_status'
+                            WHEN 6 THEN 'saturday_status'
+                            WHEN 7 THEN 'sunday_status'
+                        END;
+                        
+                        emp2_day_column := CASE emp2_day_of_week
+                            WHEN 1 THEN 'monday_status'
+                            WHEN 2 THEN 'tuesday_status'
+                            WHEN 3 THEN 'wednesday_status'
+                            WHEN 4 THEN 'thursday_status'
+                            WHEN 5 THEN 'friday_status'
+                            WHEN 6 THEN 'saturday_status'
+                            WHEN 7 THEN 'sunday_status'
+                        END;
+                        
+                        emp1_schedule_id := get_or_create_work_schedule(p_employee1_id, emp1_week_start);
+                        emp2_schedule_id := get_or_create_work_schedule(p_employee2_id, emp2_week_start);
+                        
+                        EXECUTE format('SELECT %I FROM work_schedules WHERE id = $1', emp1_day_column)
+                        INTO emp1_original_status USING emp1_schedule_id;
+                        
+                        EXECUTE format('SELECT %I FROM work_schedules WHERE id = $1', emp2_day_column)
+                        INTO emp2_original_status USING emp2_schedule_id;
+                        
+                        EXECUTE format('UPDATE work_schedules SET %I = $1 WHERE id = $2', emp1_day_column)
+                        USING emp2_original_status, emp1_schedule_id;
+                        
+                        EXECUTE format('UPDATE work_schedules SET %I = $1 WHERE id = $2', emp2_day_column)
+                        USING emp1_original_status, emp2_schedule_id;
+                        
+                        result := jsonb_build_object(
+                            'success', true,
+                            'employee1_id', p_employee1_id,
+                            'employee2_id', p_employee2_id,
+                            'employee1_date', p_employee1_date,
+                            'employee2_date', p_employee2_date,
+                            'employee1_change', emp1_original_status || ' → ' || emp2_original_status,
+                            'employee2_change', emp2_original_status || ' → ' || emp1_original_status
+                        );
+                        
+                        RETURN result;
+                    END;
+                    $$ LANGUAGE plpgsql;`
+                ];
+
+                for (const sql of sqlFunctions) {
+                    const { error } = await supabase.rpc('sql', { query: sql });
+                    if (error) {
+                        log('❌ Error creating function: ' + error.message, 'error');
+                        return;
+                    }
+                }
+
+                log('✅ Bidirectional exchange system enabled!', 'success');
+                
+            } catch (error) {
+                log('❌ Error enabling bidirectional exchange: ' + error.message, 'error');
+            }
+        }
+
+        // Test bidirectional swap
+        async function testBidirectionalSwap() {
+            log('🧪 Testing bidirectional swap...')
+            
+            try {
+                // Get two employees for testing
+                const { data: employees, error: empError } = await supabase
+                    .from('employees')
+                    .select('id, name, email')
+                    .limit(2)
+                
+                if (empError) throw empError
+                
+                if (employees.length < 2) {
+                    log('❌ Need at least 2 employees to test bidirectional swap', 'error')
+                    return
+                }
+                
+                const emp1 = employees[0]
+                const emp2 = employees[1]
+                const testDate1 = '2024-12-20'  // Friday
+                const testDate2 = '2024-12-21'  // Saturday
+                
+                log(`Testing swap between ${emp1.name} and ${emp2.name}`)
+                log(`${emp1.name} wants off on ${testDate1}, ${emp2.name} wants off on ${testDate2}`)
+                
+                // Test the bidirectional swap function
+                const { data: swapResult, error: swapError } = await supabase
+                    .rpc('swap_work_schedules_bidirectional', {
+                        p_employee1_id: emp1.id,
+                        p_employee2_id: emp2.id,
+                        p_employee1_date: testDate1,
+                        p_employee2_date: testDate2
+                    })
+                
+                if (swapError) {
+                    log('❌ Error testing swap: ' + swapError.message, 'error')
+                } else {
+                    log('✅ Bidirectional swap test completed!', 'success')
+                    log('Result: ' + JSON.stringify(swapResult, null, 2))
+                }
+                
+            } catch (error) {
+                log('❌ Error testing bidirectional swap: ' + error.message, 'error')
+            }
+        }
+
+        // Initialize on page load
+        window.onload = function() {
+            testConnection()
+        }
+    </script>
+</body>
+</html> 

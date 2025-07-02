@@ -393,24 +393,37 @@ const AdminDashboard = () => {
   const updateRequestStatus = async (id, status) => {
     try {
       const request = requests.find(req => req.id === id);
+      console.log('Updating request status:', { id, status, request });
       
       // Check if admin can approve this request
       if (request && status === 'Approved') {
         const approvalCheck = await dataService.canAdminApproveRequest(id);
+        console.log('Approval check result:', approvalCheck);
+        
         if (!approvalCheck.can_approve) {
           alert(`Cannot approve this request: ${approvalCheck.reason}`);
           return;
         }
       }
       
+      console.log('Proceeding with status update...');
       await dataService.updateRequestStatus(id, status);
+      
+      // Update local state
       setRequests(requests.map(req => 
         req.id === id ? { ...req, status } : req
       ));
       
+      // Reload data to get fresh state
+      await loadData();
+      
       // Show success message for exchange requests
       if (status === 'Approved' && request.exchange_partner_id) {
         alert('Exchange request approved! Work schedules have been updated automatically.');
+      } else if (status === 'Approved') {
+        alert('Request approved successfully!');
+      } else if (status === 'Rejected') {
+        alert('Request rejected.');
       }
     } catch (error) {
       console.error('Error updating request:', error);
@@ -423,6 +436,7 @@ const AdminDashboard = () => {
       case 'Approved': return 'text-green-600 bg-green-100';
       case 'Rejected': return 'text-red-600 bg-red-100';
       case 'Pending': return 'text-yellow-600 bg-yellow-100';
+      case 'Partner Approved': return 'text-blue-600 bg-blue-100';
       default: return 'text-gray-600 bg-gray-100';
     }
   };
@@ -959,21 +973,31 @@ const AdminDashboard = () => {
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                      {request.status === 'Pending' && (
+                      {(request.status === 'Pending' || request.status === 'Partner Approved') && (
                         <>
                           <button
                             onClick={() => updateRequestStatus(request.id, 'Approved')}
-                            className="text-green-600 hover:text-green-900"
+                            className={`px-3 py-1 rounded text-white text-xs ${
+                              request.status === 'Partner Approved' 
+                                ? 'bg-green-600 hover:bg-green-700 animate-pulse' 
+                                : 'bg-gray-400 hover:bg-green-600'
+                            }`}
                           >
-                            Approve
+                            {request.status === 'Partner Approved' ? '✅ Final Approve' : 'Approve'}
                           </button>
                           <button
                             onClick={() => updateRequestStatus(request.id, 'Rejected')}
-                            className="text-red-600 hover:text-red-900"
+                            className="px-3 py-1 rounded bg-red-600 hover:bg-red-700 text-white text-xs"
                           >
                             Reject
                           </button>
                         </>
+                      )}
+                      {request.status === 'Approved' && (
+                        <span className="text-green-600 text-xs">✅ Approved</span>
+                      )}
+                      {request.status === 'Rejected' && (
+                        <span className="text-red-600 text-xs">❌ Rejected</span>
                       )}
                     </td>
                   </tr>

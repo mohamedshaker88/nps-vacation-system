@@ -198,45 +198,55 @@ CREATE TRIGGER trigger_handle_exchange_approval
     EXECUTE FUNCTION handle_exchange_approval();
 
 -- 5. Update the admin approval check function
-CREATE OR REPLACE FUNCTION can_admin_approve_request(p_request_id BIGINT)
-RETURNS TABLE(
-    can_approve BOOLEAN,
-    reason TEXT
-) AS $$
+CREATE OR REPLACE FUNCTION can_admin_approve_request(p_request_id INTEGER)
+RETURNS TABLE(can_approve BOOLEAN, reason TEXT, debug_info JSONB) AS $$
 DECLARE
-    request_record RECORD;
+    request_row requests%ROWTYPE;
+    debug_obj JSONB := '{}';
 BEGIN
-    -- Get request details
-    SELECT * INTO request_record
-    FROM requests
-    WHERE id = p_request_id;
+    -- Get the request details
+    SELECT * INTO request_row FROM requests WHERE id = p_request_id;
+    
+    -- Build debug info
+    debug_obj := jsonb_build_object(
+        'request_id', p_request_id,
+        'request_status', request_row.status,
+        'exchange_partner_id', request_row.exchange_partner_id,
+        'exchange_partner_approved', request_row.exchange_partner_approved,
+        'exchange_partner_approved_at', request_row.exchange_partner_approved_at
+    );
     
     -- If request doesn't exist
-    IF NOT FOUND THEN
-        RETURN QUERY SELECT FALSE, 'Request not found';
+    IF request_row.id IS NULL THEN
+        RETURN QUERY SELECT false, 'Request not found', debug_obj;
         RETURN;
     END IF;
     
-    -- If request doesn't have exchange partner
-    IF request_record.exchange_partner_id IS NULL THEN
-        RETURN QUERY SELECT TRUE, 'No partner approval required';
+    -- If request is already processed
+    IF request_row.status IN ('Approved', 'Rejected') THEN
+        RETURN QUERY SELECT false, 'Request already processed', debug_obj;
         RETURN;
     END IF;
     
-    -- If partner has approved
-    IF request_record.exchange_partner_approved = TRUE THEN
-        RETURN QUERY SELECT TRUE, 'Partner has approved - admin can now approve';
+    -- If it's not an exchange request, admin can approve
+    IF request_row.exchange_partner_id IS NULL THEN
+        RETURN QUERY SELECT true, 'Regular leave request - can approve', debug_obj;
         RETURN;
     END IF;
     
-    -- If partner has rejected
-    IF request_record.exchange_partner_approved = FALSE AND request_record.exchange_partner_approved_at IS NOT NULL THEN
-        RETURN QUERY SELECT FALSE, 'Partner has rejected the request';
+    -- For exchange requests, check partner approval
+    IF request_row.exchange_partner_approved IS NULL THEN
+        RETURN QUERY SELECT false, 'Waiting for exchange partner approval', debug_obj;
         RETURN;
     END IF;
     
-    -- If partner hasn't responded yet
-    RETURN QUERY SELECT FALSE, 'Waiting for partner approval';
+    IF request_row.exchange_partner_approved = false THEN
+        RETURN QUERY SELECT false, 'Exchange partner rejected the request', debug_obj;
+        RETURN;
+    END IF;
+    
+    -- Partner approved, admin can approve
+    RETURN QUERY SELECT true, 'Exchange partner approved - admin can approve', debug_obj;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -322,4 +332,79 @@ FROM requests r
 LEFT JOIN employees e ON r.exchange_partner_id = e.id
 WHERE r.exchange_partner_approved = TRUE
 AND r.status = 'Partner Approved'
-ORDER BY r.created_at DESC; 
+ORDER BY r.created_at DESC;
+
+-- Update request status change to handle Partner Approved status correctly
+CREATE OR REPLACE FUNCTION update_request_status_and_schedules()
+RETURNS TRIGGER AS $$
+DECLARE
+    partner_employee employees%ROWTYPE;
+    requester_employee employees%ROWTYPE;
+BEGIN
+    -- Only process when status changes to 'Approved'
+    IF NEW.status = 'Approved' AND OLD.status != 'Approved' THEN
+        -- If this is an exchange request, update work schedules
+        IF NEW.exchange_partner_id IS NOT NULL THEN
+            -- Get employee details
+            SELECT * INTO requester_employee FROM employees WHERE id = NEW.employee_id;
+            SELECT * INTO partner_employee FROM employees WHERE id = NEW.exchange_partner_id;
+            
+            -- Swap work schedules for the exchange date
+            PERFORM swap_work_schedules_for_date(
+                NEW.employee_id, 
+                NEW.exchange_partner_id, 
+                NEW.start_date::date
+            );
+            
+            -- Create notifications for both parties
+            INSERT INTO notifications (employee_id, type, title, message, is_read) VALUES
+            (NEW.employee_id, 'exchange_approved', 
+             'Exchange Request Approved', 
+             'Your exchange request for ' || NEW.start_date || ' with ' || partner_employee.name || ' has been approved by admin. Work schedules have been updated.',
+             false),
+            (NEW.exchange_partner_id, 'exchange_approved', 
+             'Exchange Request Approved', 
+             'The exchange request from ' || requester_employee.name || ' for ' || NEW.start_date || ' has been approved by admin. Work schedules have been updated.',
+             false);
+        END IF;
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Also ensure we have a function to manually check partner approval status
+CREATE OR REPLACE FUNCTION get_exchange_request_status(p_request_id INTEGER)
+RETURNS JSONB AS $$
+DECLARE
+    request_row requests%ROWTYPE;
+    partner_name TEXT;
+    result JSONB;
+BEGIN
+    -- Get the request first
+    SELECT * INTO request_row FROM requests WHERE id = p_request_id;
+    
+    -- Get partner name separately if there is a partner
+    IF request_row.exchange_partner_id IS NOT NULL THEN
+        SELECT name INTO partner_name 
+        FROM employees 
+        WHERE id = request_row.exchange_partner_id;
+    END IF;
+    
+    result := jsonb_build_object(
+        'request_id', request_row.id,
+        'status', request_row.status,
+        'exchange_partner_id', request_row.exchange_partner_id,
+        'exchange_partner_name', partner_name,
+        'exchange_partner_approved', request_row.exchange_partner_approved,
+        'exchange_partner_approved_at', request_row.exchange_partner_approved_at,
+        'can_admin_approve', CASE 
+            WHEN request_row.exchange_partner_id IS NULL THEN true
+            WHEN request_row.exchange_partner_approved = true THEN true
+            ELSE false
+        END
+    );
+    
+    RETURN result;
+END;
+$$ LANGUAGE plpgsql; 
